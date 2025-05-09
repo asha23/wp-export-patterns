@@ -33,7 +33,7 @@ class Importer
         ];
 
         update_option("_wp_preview_session_$session_id", $data, false);
-        update_option('_wp_export_preview_session', $session_id); // for redirect
+        update_option('_wp_export_preview_session', $session_id);
 
         wp_safe_redirect(admin_url('admin.php?page=wp-pattern-preview'));
         exit;
@@ -59,13 +59,14 @@ class Importer
             exit;
         }
 
-        $patterns = $session_data['patterns'];
-        $overwrite = isset($_POST['overwrite']) && $_POST['overwrite'] === '1';
-
-        $imported = 0;
-        $skipped = 0;
+        $patterns   = $session_data['patterns'];
+        $overwrite  = isset($_POST['overwrite']) && $_POST['overwrite'] === '1';
+        $imported   = 0;
+        $skipped    = 0;
         $overwritten = 0;
-        $failed = 0;
+        $failed     = 0;
+        $imported_titles = [];
+        $overwritten_titles = [];
 
         foreach ($patterns as $pattern) {
             if (
@@ -91,6 +92,7 @@ class Importer
 
                 if ($updated && !is_wp_error($updated)) {
                     $overwritten++;
+                    $overwritten_titles[] = $pattern['post_title'];
                     update_post_meta($existing->ID, '_import_session', $session_id);
                     continue;
                 } else {
@@ -109,6 +111,7 @@ class Importer
 
             if ($inserted && !is_wp_error($inserted)) {
                 $imported++;
+                $imported_titles[] = $pattern['post_title'];
                 add_post_meta($inserted, '_import_session', $session_id);
             } else {
                 $failed++;
@@ -116,19 +119,22 @@ class Importer
         }
 
         delete_option("_wp_preview_session_$session_id");
+        delete_option('_wp_export_preview_session');
 
         $summary_key = "import_result_{$imported}_{$skipped}_{$overwritten}_{$failed}";
         update_option('_wp_export_notice', $summary_key);
         update_option('_wp_export_last_session', $session_id);
 
-        // track sessions in history log
+        // Track session log with detailed titles
         $log = get_option('_wp_export_sessions', []);
         $log[$session_id] = [
-            'timestamp' => time(),
-            'imported' => $imported,
-            'skipped' => $skipped,
-            'overwritten' => $overwritten,
-            'failed' => $failed,
+            'timestamp'          => time(),
+            'imported'           => $imported,
+            'skipped'            => $skipped,
+            'overwritten'        => $overwritten,
+            'failed'             => $failed,
+            'imported_titles'    => $imported_titles,
+            'overwritten_titles' => $overwritten_titles,
         ];
         update_option('_wp_export_sessions', $log);
 
