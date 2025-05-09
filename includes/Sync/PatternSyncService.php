@@ -100,6 +100,18 @@ class PatternSyncService
                     'trashed' => $post->post_status === 'trash',
                 ];
             }
+
+            // Auto-delete orphaned JSON files if the DB pattern no longer exists
+            $existingSlugs = wp_list_pluck($dbPatterns, 'post_name');
+
+            $patternFolder = self::get_pattern_path();
+            foreach (glob($patternFolder . '/*.json') as $file) {
+                $filename = basename($file, '.json');
+                if (!in_array($filename, $existingSlugs, true)) {
+                    @unlink($file);
+                }
+            }
+
         }
 
         return $unsynced;
