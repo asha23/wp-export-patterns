@@ -19,7 +19,14 @@ class PatternSyncService
         }
 
         $patterns = [];
+
         foreach (glob($path . '/*.json') as $file) {
+            $slug = basename($file, '.json');
+
+            if (str_ends_with($slug, '.deleted')) {
+                continue;
+            }
+
             $data = json_decode(file_get_contents($file), true);
             if (isset($data['post_name'], $data['post_content'])) {
                 $patterns[$data['post_name']] = $data;
@@ -30,36 +37,34 @@ class PatternSyncService
     }
 
     public static function export_to_disk(array $pattern): \WP_Error|bool
-	{
-		if (!isset($pattern['post_name'], $pattern['post_title'], $pattern['post_content'])) {
-			return new \WP_Error('pattern_invalid', 'Missing required pattern fields.');
-		}
+    {
+        if (!isset($pattern['post_name'], $pattern['post_title'], $pattern['post_content'])) {
+            return new \WP_Error('pattern_invalid', 'Missing required pattern fields.');
+        }
 
-		$folder = self::get_pattern_path();
+        $folder = self::get_pattern_path();
 
-		if (!is_dir($folder)) {
-			if (!wp_mkdir_p($folder)) {
-				return new \WP_Error('mkdir_failed', 'Failed to create pattern folder at: ' . $folder);
-			}
-		}
+        if (!is_dir($folder)) {
+            if (!wp_mkdir_p($folder)) {
+                return new \WP_Error('mkdir_failed', 'Failed to create pattern folder at: ' . $folder);
+            }
+        }
 
-		if (!is_writable($folder)) {
-			return new \WP_Error('folder_not_writable', 'The patterns folder is not writable: ' . $folder);
-		}
+        if (!is_writable($folder)) {
+            return new \WP_Error('folder_not_writable', 'The patterns folder is not writable: ' . $folder);
+        }
 
-		$pattern['modified'] = current_time('c');
+        $pattern['modified'] = current_time('c');
+        $filename = $folder . '/' . sanitize_file_name($pattern['post_name']) . '.json';
 
-		$filename = $folder . '/' . sanitize_file_name($pattern['post_name']) . '.json';
+        $result = file_put_contents($filename, json_encode($pattern, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
-		$result = file_put_contents($filename, json_encode($pattern, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        if ($result === false) {
+            return new \WP_Error('write_failed', 'Failed to write pattern file: ' . $filename);
+        }
 
-		if ($result === false) {
-			return new \WP_Error('write_failed', 'Failed to write pattern file: ' . $filename);
-		}
-
-		return true;
-	}
-
+        return true;
+    }
 
     public static function detect_unsynced(): array
     {
@@ -70,6 +75,7 @@ class PatternSyncService
         $dbPatterns = get_posts([
             'post_type'      => 'wp_block',
             'posts_per_page' => -1,
+            'post_status'    => ['publish', 'trash'],
         ]);
 
         foreach ($dbPatterns as $post) {
@@ -81,6 +87,7 @@ class PatternSyncService
                 $unsynced[$slug] = [
                     'title' => $title,
                     'status' => 'missing_from_disk',
+                    'trashed' => $post->post_status === 'trash',
                 ];
                 continue;
             }
@@ -90,6 +97,7 @@ class PatternSyncService
                 $unsynced[$slug] = [
                     'title' => $title,
                     'status' => 'outdated',
+                    'trashed' => $post->post_status === 'trash',
                 ];
             }
         }
@@ -97,16 +105,16 @@ class PatternSyncService
         return $unsynced;
     }
 
-    public static function import_pattern(string $slug): bool
+    public static function import_pattern(string $slug): \WP_Error|bool
     {
         $path = self::get_pattern_path() . '/' . sanitize_file_name($slug) . '.json';
         if (!file_exists($path)) {
-            return false;
+            return new \WP_Error('not_found', 'Pattern file not found.');
         }
 
         $data = json_decode(file_get_contents($path), true);
         if (!is_array($data) || !isset($data['post_name'], $data['post_content'])) {
-            return false;
+            return new \WP_Error('invalid_json', 'Pattern JSON is invalid.');
         }
 
         $existing = get_page_by_path($slug, OBJECT, 'wp_block');
@@ -115,26 +123,27 @@ class PatternSyncService
                 'ID'           => $existing->ID,
                 'post_title'   => $data['post_title'],
                 'post_content' => $data['post_content'],
-            ]);
-            return !is_wp_error($updated);
-        } else {
-            $inserted = wp_insert_post([
-                'post_type'    => 'wp_block',
-                'post_name'    => $data['post_name'],
-                'post_title'   => $data['post_title'],
-                'post_content' => $data['post_content'],
                 'post_status'  => 'publish',
             ]);
-            return !is_wp_error($inserted);
+            return is_wp_error($updated) ? $updated : true;
         }
+
+        $inserted = wp_insert_post([
+            'post_type'    => 'wp_block',
+            'post_name'    => $data['post_name'],
+            'post_title'   => $data['post_title'],
+            'post_content' => $data['post_content'],
+            'post_status'  => 'publish',
+        ]);
+
+        return is_wp_error($inserted) ? $inserted : true;
     }
 
-    public static function export_pattern(string $slug): bool
+    public static function export_pattern(string $slug): \WP_Error|bool
     {
         $post = get_page_by_path($slug, OBJECT, 'wp_block');
-
         if (!$post) {
-            return false;
+            return new \WP_Error('not_found', 'Pattern not found in DB.');
         }
 
         return self::export_to_disk([
@@ -142,5 +151,61 @@ class PatternSyncService
             'post_name'    => $post->post_name,
             'post_content' => $post->post_content,
         ]);
+    }
+
+    public static function trash_pattern(string $slug): \WP_Error|bool
+    {
+        $errors = [];
+
+        $post = get_page_by_path($slug, OBJECT, 'wp_block');
+        if ($post && $post->post_status !== 'trash') {
+            $trashed = wp_trash_post($post->ID);
+            if (!$trashed) {
+                $errors[] = 'Failed to move DB pattern to trash.';
+            }
+        }
+
+        $file = self::get_pattern_path() . '/' . sanitize_file_name($slug) . '.json';
+        $trashed_file = self::get_pattern_path() . '/' . sanitize_file_name($slug) . '.deleted.json';
+
+        if (file_exists($file)) {
+            if (!rename($file, $trashed_file)) {
+                $errors[] = 'Failed to move pattern file to trash.';
+            }
+        }
+
+        return empty($errors) ? true : new \WP_Error('trash_failed', implode(' ', $errors));
+    }
+
+    public static function restore_pattern(string $slug): \WP_Error|bool
+    {
+        $post = get_page_by_path($slug, OBJECT, 'wp_block');
+        if ($post && $post->post_status === 'trash') {
+            $restored = wp_untrash_post($post->ID);
+            if (!$restored) {
+                return new \WP_Error('untrash_failed', 'Failed to restore pattern from trash.');
+            }
+        }
+
+        $file = self::get_pattern_path() . '/' . sanitize_file_name($slug) . '.deleted.json';
+        $original = self::get_pattern_path() . '/' . sanitize_file_name($slug) . '.json';
+
+        if (file_exists($file)) {
+            if (!rename($file, $original)) {
+                return new \WP_Error('file_restore_failed', 'Failed to restore pattern file from trash.');
+            }
+        }
+
+        return true;
+    }
+
+    public static function bulk_trash(array $slugs): array
+    {
+        $results = [];
+        foreach ($slugs as $slug) {
+            $result = self::trash_pattern($slug);
+            $results[$slug] = $result === true ? 'trashed' : ($result instanceof \WP_Error ? $result->get_error_message() : 'failed');
+        }
+        return $results;
     }
 }
