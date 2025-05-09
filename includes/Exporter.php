@@ -55,9 +55,8 @@ class Exporter
             echo '</form>';
         }
 
-        // Session log
+        // Session log with titles
         echo '<hr><h2>Import Session Log</h2>';
-
         $log = get_option('_wp_export_sessions', []);
 
         if (empty($log)) {
@@ -91,17 +90,16 @@ class Exporter
                 echo '<td>' . esc_html($overwritten) . '</td>';
                 echo '<td>' . esc_html($failed) . '</td>';
 
-                // Titles (inline!)
-                echo '<td style="max-width:300px;">';
+                echo '<td>';
                 if ($imported_titles) {
-                    echo '<strong>Imported:</strong><ul style="margin:0; padding-left:1rem;">';
+                    echo '<strong>Imported:</strong><ul style="margin:0 0 0.5rem 1rem;">';
                     foreach ($imported_titles as $title) {
                         echo '<li>' . esc_html($title) . '</li>';
                     }
                     echo '</ul>';
                 }
                 if ($overwritten_titles) {
-                    echo '<strong>Overwritten:</strong><ul style="margin:0; padding-left:1rem;">';
+                    echo '<strong>Overwritten:</strong><ul style="margin:0 0 0.5rem 1rem;">';
                     foreach ($overwritten_titles as $title) {
                         echo '<li>' . esc_html($title) . '</li>';
                     }
@@ -109,7 +107,6 @@ class Exporter
                 }
                 echo '</td>';
 
-                // Undo form
                 echo '<td>';
                 echo '<form method="post" style="margin:0;">';
                 echo '<input type="hidden" name="undo_session_id" value="' . esc_attr($session_id) . '">';
@@ -123,6 +120,9 @@ class Exporter
 
             echo '</tbody></table>';
         }
+
+        echo '</div>';
+    }
 
     public static function maybe_handle_export(): void
     {
