@@ -59,5 +59,5 @@ add_action('admin_menu', function () {
         'WPExportPatterns\\Preview::render_preview_screen'
     );
 
-    \WPExportPatterns\Sync\PatternSyncAdmin::register(); 
+    \WPExportPatterns\Sync\PatternSyncAdmin::register(); // ✅ required
 });

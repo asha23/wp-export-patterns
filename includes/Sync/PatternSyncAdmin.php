@@ -5,16 +5,16 @@ namespace WPExportPatterns\Sync;
 class PatternSyncAdmin
 {
     public static function register(): void
-    {
-        add_submenu_page(
-            null,
-            'Sync Block Patterns',
-            'Pattern Sync',
-            'manage_options',
-            'wp-pattern-sync',
-            [self::class, 'render']
-        );
-    }
+	{
+		add_submenu_page(
+			'wp-export-patterns',                // Parent slug
+			'Sync Block Patterns',               // Page title
+			'Sync Patterns',                     // Menu title
+			'manage_options',                    // Capability
+			'wp-pattern-sync',                   // Menu slug
+			[self::class, 'render']              // Callback
+		);
+	}
 
     public static function render(): void
     {
