@@ -4,7 +4,6 @@
  * Description: Export and import Gutenberg block patterns across multiple WordPress sites.
  * Version: 1.0.0
  * Author: Ash Whiting for BrightLocal
- * Requires PHP: 8.2
  */
 
 if (!defined('ABSPATH')) {
