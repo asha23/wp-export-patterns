@@ -1,5 +1,5 @@
 {
-    "name": "yourname/wp-export-patterns",
+    "name": "asha23/wp-export-patterns",
     "description": "Export and import Gutenberg block patterns across WordPress sites.",
     "type": "wordpress-plugin",
     "author": "Ash Whiting for BrightLocal",
