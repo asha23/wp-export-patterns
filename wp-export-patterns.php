@@ -13,12 +13,16 @@ if (!defined('ABSPATH')) {
 require_once __DIR__ . '/includes/Exporter.php';
 require_once __DIR__ . '/includes/Importer.php';
 require_once __DIR__ . '/includes/Preview.php';
+require_once __DIR__ . '/includes/Cleanup.php';
 
 // Redirect-safe routing
 add_action('admin_init', function () {
     if (!is_admin()) {
         return;
     }
+
+    Cleanup::clean_stale_previews();
+    Cleanup::limit_session_log();
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['import_file'])) {
         \WPExportPatterns\Importer::handle_upload();
