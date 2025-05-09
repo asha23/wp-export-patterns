@@ -20,7 +20,7 @@ class Cleanup
             if (!is_array($session)) continue;
 
             if (!isset($session['timestamp'])) {
-                // Legacy sessions — add timestamp now
+                // Legacy sessions add timestamp now
                 $session['timestamp'] = time();
                 update_option($opt->option_name, $session, false);
                 continue;
