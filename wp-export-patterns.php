@@ -13,6 +13,8 @@ if (!defined('ABSPATH')) {
 require_once __DIR__ . '/includes/Exporter.php';
 require_once __DIR__ . '/includes/Importer.php';
 
+add_action('admin_init', ['WPExportPatterns\\Exporter', 'maybe_handle_export']);
+
 add_action('admin_menu', function () {
     add_menu_page(
         'Export/Import Patterns',

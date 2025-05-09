@@ -6,8 +6,22 @@ class Importer
 {
     public static function handle_import(): void
     {
+        if (
+            !isset($_FILES['import_file']) ||
+            !check_admin_referer('wp_import_patterns', 'wp_import_patterns_nonce')
+        ) {
+            return;
+        }
+
         $json = file_get_contents($_FILES['import_file']['tmp_name']);
         $patterns = json_decode($json, true);
+
+        if (!is_array($patterns)) {
+            add_action('admin_notices', function () {
+                echo '<div class="notice notice-error is-dismissible"><p>Import failed: invalid JSON file.</p></div>';
+            });
+            return;
+        }
 
         foreach ($patterns as $pattern) {
             $exists = get_page_by_path($pattern['post_name'], OBJECT, 'wp_block');
