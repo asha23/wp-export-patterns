@@ -39,14 +39,16 @@ class Exporter
         if (empty($unsynced)) {
             echo '<div class="notice notice-success inline"><p>All patterns are in sync.</p></div>';
         } else {
-            $count = count($unsynced);
-            echo '<div class="notice notice-warning inline"><p>';
-            echo sprintf('%d pattern%s out of sync. <a href="%s" class="button">Sync Now</a>',
-                $count,
-                $count === 1 ? '' : 's',
-                esc_url(admin_url('admin.php?page=wp-pattern-sync'))
-            );
-            echo '</p></div>';
+            echo '<div class="notice notice-warning inline">';
+            echo '<p><strong>' . count($unsynced) . ' pattern' . (count($unsynced) === 1 ? '' : 's') . ' out of sync:</strong></p>';
+            echo '<ul style="margin-left:1em;">';
+            foreach ($unsynced as $slug => $info) {
+                $status = $info['status'] === 'missing_from_disk' ? 'Missing from disk' : 'Outdated';
+                echo '<li>' . esc_html($info['title']) . ' <em>(' . $status . ')</em></li>';
+            }
+            echo '</ul>';
+            echo '<p><a href="' . esc_url(admin_url('admin.php?page=wp-pattern-sync')) . '" class="button">Open Sync Tool</a></p>';
+            echo '</div>';
         }
 
         // Export form
