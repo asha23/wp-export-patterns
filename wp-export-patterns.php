@@ -14,6 +14,8 @@ require_once __DIR__ . '/includes/Exporter.php';
 require_once __DIR__ . '/includes/Importer.php';
 require_once __DIR__ . '/includes/Preview.php';
 require_once __DIR__ . '/includes/Cleanup.php';
+require_once __DIR__ . '/includes/Sync/PatternSyncService.php';
+require_once __DIR__ . '/includes/Sync/PatternSyncAdmin.php';
 
 // Redirect-safe routing
 add_action('admin_init', function () {
@@ -56,4 +58,6 @@ add_action('admin_menu', function () {
         'wp-pattern-preview',
         'WPExportPatterns\\Preview::render_preview_screen'
     );
+
+    \WPExportPatterns\Sync\PatternSyncAdmin::register();
 });
