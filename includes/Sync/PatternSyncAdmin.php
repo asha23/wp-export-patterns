@@ -48,7 +48,9 @@ class PatternSyncAdmin
         settings_errors('pattern_sync');
 
         if (empty($unsynced)) {
+			echo '<div class="notice notice-success is-dismissible"><p>All patterns are in sync.</p></div>';
             echo '<p>All patterns are in sync.</p>';
+			echo '</div>';
         } else {
             echo '<table class="widefat striped">';
             echo '<thead><tr><th>Title</th><th>Slug</th><th>Status</th><th>Action</th></tr></thead><tbody>';
