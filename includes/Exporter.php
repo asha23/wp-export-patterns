@@ -14,7 +14,6 @@ class Exporter
         echo '<div class="wrap">';
         echo '<h1>Import/Export Patterns</h1>';
 
-        // Export form
         echo '<h2>Export Patterns</h2>';
         echo '<form method="post">';
         echo '<input type="hidden" name="wp_export_patterns_nonce" value="' . esc_attr(wp_create_nonce('wp_export_patterns')) . '">';
@@ -38,7 +37,6 @@ class Exporter
 
         echo '</form>';
 
-        // Import form
         echo '<hr><h2>Import Patterns</h2>';
         echo '<form method="post" enctype="multipart/form-data">';
         echo '<input type="hidden" name="wp_import_patterns_nonce" value="' . esc_attr(wp_create_nonce('wp_import_patterns')) . '">';
@@ -46,7 +44,6 @@ class Exporter
         echo '<input type="submit" name="import_patterns" class="button" value="Import">';
         echo '</form>';
 
-        // Undo last import
         if ($session = get_option('_wp_export_last_session')) {
             echo '<hr><h2>Undo Last Import</h2>';
             echo '<form method="post">';
@@ -55,22 +52,15 @@ class Exporter
             echo '</form>';
         }
 
-        // Session log with titles
         echo '<hr><h2>Import Session Log</h2>';
+
         $log = get_option('_wp_export_sessions', []);
 
         if (empty($log)) {
             echo '<p>No import sessions found.</p>';
         } else {
             echo '<table class="widefat striped"><thead><tr>';
-            echo '<th>Session ID</th>';
-            echo '<th>Timestamp</th>';
-            echo '<th>Imported</th>';
-            echo '<th>Skipped</th>';
-            echo '<th>Overwritten</th>';
-            echo '<th>Failed</th>';
-            echo '<th>Patterns</th>';
-            echo '<th>Undo</th>';
+            echo '<th>Session ID</th><th>Timestamp</th><th>Imported</th><th>Skipped</th><th>Overwritten</th><th>Failed</th><th>Patterns</th><th>Actions</th>';
             echo '</tr></thead><tbody>';
 
             foreach ($log as $session_id => $data) {
@@ -89,7 +79,6 @@ class Exporter
                 echo '<td>' . esc_html($skipped) . '</td>';
                 echo '<td>' . esc_html($overwritten) . '</td>';
                 echo '<td>' . esc_html($failed) . '</td>';
-
                 echo '<td>';
                 if ($imported_titles) {
                     echo '<strong>Imported:</strong><ul style="margin:0 0 0.5rem 1rem;">';
@@ -106,15 +95,18 @@ class Exporter
                     echo '</ul>';
                 }
                 echo '</td>';
-
                 echo '<td>';
-                echo '<form method="post" style="margin:0;">';
+                echo '<form method="post" style="margin-bottom:5px;">';
                 echo '<input type="hidden" name="undo_session_id" value="' . esc_attr($session_id) . '">';
                 echo '<input type="hidden" name="undo_session_nonce" value="' . esc_attr(wp_create_nonce('undo_session_' . $session_id)) . '">';
                 echo '<input type="submit" class="button" value="Undo">';
                 echo '</form>';
+                echo '<form method="post">';
+                echo '<input type="hidden" name="delete_session_id" value="' . esc_attr($session_id) . '">';
+                echo '<input type="hidden" name="delete_session_nonce" value="' . esc_attr(wp_create_nonce('delete_session_' . $session_id)) . '">';
+                echo '<input type="submit" class="button button-secondary" value="Delete">';
+                echo '</form>';
                 echo '</td>';
-
                 echo '</tr>';
             }
 
@@ -144,10 +136,7 @@ class Exporter
                 }
 
                 delete_option('_wp_export_last_session');
-
-                update_option('_wp_export_notice', $deleted > 0
-                    ? "undo_success_$deleted"
-                    : "undo_none");
+                update_option('_wp_export_notice', $deleted > 0 ? "undo_success_$deleted" : "undo_none");
             } else {
                 update_option('_wp_export_notice', 'undo_none');
             }
@@ -210,11 +199,21 @@ class Exporter
             unset($log[$session_id]);
             update_option('_wp_export_sessions', $log);
 
-            update_option('_wp_export_notice', $deleted > 0
-                ? "undo_success_$deleted"
-                : "undo_none");
+            update_option('_wp_export_notice', $deleted > 0 ? "undo_success_$deleted" : "undo_none");
+        }
 
-            return;
+        if (isset($_POST['delete_session_id']) && isset($_POST['delete_session_nonce'])) {
+            $session_id = sanitize_text_field($_POST['delete_session_id']);
+            if (!wp_verify_nonce($_POST['delete_session_nonce'], 'delete_session_' . $session_id)) {
+                update_option('_wp_export_notice', 'invalid_nonce');
+                return;
+            }
+
+            $log = get_option('_wp_export_sessions', []);
+            unset($log[$session_id]);
+            update_option('_wp_export_sessions', $log);
+
+            update_option('_wp_export_notice', 'session_deleted');
         }
     }
 
@@ -269,15 +268,9 @@ class Exporter
 
                 $summary = [];
 
-                if ($imported > 0) {
-                    $summary[] = "$imported imported";
-                }
-                if ($skipped > 0) {
-                    $summary[] = "$skipped skipped";
-                }
-                if ($overwritten > 0) {
-                    $summary[] = "$overwritten overwritten";
-                }
+                if ($imported > 0) $summary[] = "$imported imported";
+                if ($skipped > 0) $summary[] = "$skipped skipped";
+                if ($overwritten > 0) $summary[] = "$overwritten overwritten";
                 if ($failed > 0) {
                     $summary[] = "$failed failed";
                     $class = 'notice-error';
@@ -294,6 +287,10 @@ class Exporter
             case $notice === 'undo_none':
                 $message = 'Nothing to undo.';
                 $class = 'notice-warning';
+                break;
+
+            case $notice === 'session_deleted':
+                $message = 'Session deleted.';
                 break;
         }
 
