@@ -64,7 +64,14 @@ class Exporter
             echo '<p>No import sessions found.</p>';
         } else {
             echo '<table class="widefat striped"><thead><tr>';
-            echo '<th>Session ID</th><th>Timestamp</th><th>Imported</th><th>Skipped</th><th>Overwritten</th><th>Failed</th><th>Undo</th>';
+            echo '<th>Session ID</th>';
+            echo '<th>Timestamp</th>';
+            echo '<th>Imported</th>';
+            echo '<th>Skipped</th>';
+            echo '<th>Overwritten</th>';
+            echo '<th>Failed</th>';
+            echo '<th>Patterns</th>';
+            echo '<th>Undo</th>';
             echo '</tr></thead><tbody>';
 
             foreach ($log as $session_id => $data) {
@@ -73,6 +80,8 @@ class Exporter
                 $skipped = (int) ($data['skipped'] ?? 0);
                 $overwritten = (int) ($data['overwritten'] ?? 0);
                 $failed = (int) ($data['failed'] ?? 0);
+                $imported_titles = $data['imported_titles'] ?? [];
+                $overwritten_titles = $data['overwritten_titles'] ?? [];
 
                 echo '<tr>';
                 echo '<td style="font-family:monospace;">' . esc_html($session_id) . '</td>';
@@ -81,6 +90,26 @@ class Exporter
                 echo '<td>' . esc_html($skipped) . '</td>';
                 echo '<td>' . esc_html($overwritten) . '</td>';
                 echo '<td>' . esc_html($failed) . '</td>';
+
+                // Titles (inline!)
+                echo '<td style="max-width:300px;">';
+                if ($imported_titles) {
+                    echo '<strong>Imported:</strong><ul style="margin:0; padding-left:1rem;">';
+                    foreach ($imported_titles as $title) {
+                        echo '<li>' . esc_html($title) . '</li>';
+                    }
+                    echo '</ul>';
+                }
+                if ($overwritten_titles) {
+                    echo '<strong>Overwritten:</strong><ul style="margin:0; padding-left:1rem;">';
+                    foreach ($overwritten_titles as $title) {
+                        echo '<li>' . esc_html($title) . '</li>';
+                    }
+                    echo '</ul>';
+                }
+                echo '</td>';
+
+                // Undo form
                 echo '<td>';
                 echo '<form method="post" style="margin:0;">';
                 echo '<input type="hidden" name="undo_session_id" value="' . esc_attr($session_id) . '">';
@@ -88,35 +117,12 @@ class Exporter
                 echo '<input type="submit" class="button" value="Undo">';
                 echo '</form>';
                 echo '</td>';
+
                 echo '</tr>';
-
-                // Pattern title details
-                echo '<tr><td colspan="7" style="background: #fafafa; padding: 0 1rem;">';
-
-                if (!empty($data['imported_titles'])) {
-                    echo '<details style="margin: 0.5rem 0;"><summary><strong>Imported Patterns</strong></summary><ul>';
-                    foreach ($data['imported_titles'] as $title) {
-                        echo '<li>' . esc_html($title) . '</li>';
-                    }
-                    echo '</ul></details>';
-                }
-
-                if (!empty($data['overwritten_titles'])) {
-                    echo '<details style="margin: 0.5rem 0;"><summary><strong>Overwritten Patterns</strong></summary><ul>';
-                    foreach ($data['overwritten_titles'] as $title) {
-                        echo '<li>' . esc_html($title) . '</li>';
-                    }
-                    echo '</ul></details>';
-                }
-
-                echo '</td></tr>';
             }
 
             echo '</tbody></table>';
         }
-
-        echo '</div>';
-    }
 
     public static function maybe_handle_export(): void
     {
