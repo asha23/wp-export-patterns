@@ -48,7 +48,7 @@ add_action('admin_menu', function () {
         'manage_options',
         'wp-export-patterns',
         'WPExportPatterns\\Exporter::render_admin_page',
-        plugins_url('assets/icon-resized.png', __FILE__)
+        plugins_url('assets/icon.png', __FILE__)
     );
 
     add_submenu_page(
