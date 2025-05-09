@@ -7,9 +7,7 @@ class Exporter
     public static function render_admin_page(): void
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['import_file'])) {
-            Importer::handle_import();
-            wp_safe_redirect(admin_url('admin.php?page=wp-export-patterns'));
-            exit;
+            Importer::handle_upload();
         }
 
         $blocks = get_posts([
