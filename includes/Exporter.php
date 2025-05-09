@@ -6,6 +6,12 @@ class Exporter
 {
     public static function render_admin_page(): void
     {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['import_file'])) {
+            Importer::handle_import();
+            wp_safe_redirect(admin_url('admin.php?page=wp-export-patterns'));
+            exit;
+        }
+
         $blocks = get_posts([
             'post_type'      => 'wp_block',
             'posts_per_page' => -1,
@@ -14,7 +20,6 @@ class Exporter
         echo '<div class="wrap">';
         echo '<h1>Import/Export Patterns</h1>';
 
-        // EXPORT FORM
         echo '<h2>Export Patterns</h2>';
         echo '<form method="post">';
         echo '<input type="hidden" name="wp_export_patterns_nonce" value="' . esc_attr(wp_create_nonce('wp_export_patterns')) . '">';
@@ -38,18 +43,55 @@ class Exporter
 
         echo '</form>';
 
-        // IMPORT FORM
         echo '<hr><h2>Import Patterns</h2>';
         echo '<form method="post" enctype="multipart/form-data">';
         echo '<input type="hidden" name="wp_import_patterns_nonce" value="' . esc_attr(wp_create_nonce('wp_import_patterns')) . '">';
         echo '<input type="file" name="import_file" required> ';
         echo '<input type="submit" name="import_patterns" class="button" value="Import">';
         echo '</form>';
+
+        if ($session = get_option('_wp_export_last_session')) {
+            echo '<hr><h2>Undo Last Import</h2>';
+            echo '<form method="post">';
+            echo '<input type="hidden" name="undo_import_nonce" value="' . esc_attr(wp_create_nonce('undo_import')) . '">';
+            echo '<input type="submit" name="undo_import" class="button button-secondary" value="Undo Last Import">';
+            echo '</form>';
+        }
+
         echo '</div>';
     }
 
     public static function maybe_handle_export(): void
     {
+        // Handle Undo
+        if (isset($_POST['undo_import']) && check_admin_referer('undo_import', 'undo_import_nonce')) {
+            $session = get_option('_wp_export_last_session');
+            if ($session) {
+                $blocks = get_posts([
+                    'post_type'      => 'wp_block',
+                    'meta_key'       => '_import_session',
+                    'meta_value'     => $session,
+                    'posts_per_page' => -1,
+                ]);
+
+                $deleted = 0;
+                foreach ($blocks as $block) {
+                    if (wp_delete_post($block->ID, true)) {
+                        $deleted++;
+                    }
+                }
+
+                delete_option('_wp_export_last_session');
+
+                update_option('_wp_export_notice', $deleted > 0
+                    ? "undo_success_$deleted"
+                    : "undo_none");
+            } else {
+                update_option('_wp_export_notice', 'undo_none');
+            }
+        }
+
+        // Handle Export
         if (isset($_POST['export_patterns'])) {
             if (!check_admin_referer('wp_export_patterns', 'wp_export_patterns_nonce')) {
                 update_option('_wp_export_notice', 'invalid_nonce');
@@ -62,6 +104,7 @@ class Exporter
             }
 
             $ids = array_map('intval', $_POST['export_ids']);
+
             $blocks = get_posts([
                 'post_type' => 'wp_block',
                 'post__in' => $ids,
@@ -76,12 +119,10 @@ class Exporter
                 ];
             }, $blocks);
 
-            if (!headers_sent()) {
-                header('Content-Type: application/json');
-                header('Content-Disposition: attachment; filename="block-patterns-export.json"');
-                echo json_encode($export_data, JSON_PRETTY_PRINT);
-                exit;
-            }
+            header('Content-Type: application/json');
+            header('Content-Disposition: attachment; filename="block-patterns-export.json"');
+            echo json_encode($export_data, JSON_PRETTY_PRINT);
+            exit;
         }
     }
 
@@ -128,10 +169,12 @@ class Exporter
                 break;
 
             case str_starts_with($notice, 'import_result_'):
+                // Format: import_result_{imported}_{skipped}_{overwritten}_{failed}
                 $parts = explode('_', $notice);
-                $imported = (int) $parts[2];
-                $skipped  = (int) $parts[3];
-                $failed   = (int) $parts[4];
+                $imported    = (int) ($parts[2] ?? 0);
+                $skipped     = (int) ($parts[3] ?? 0);
+                $overwritten = (int) ($parts[4] ?? 0);
+                $failed      = (int) ($parts[5] ?? 0);
 
                 $summary = [];
 
@@ -139,7 +182,10 @@ class Exporter
                     $summary[] = "$imported imported";
                 }
                 if ($skipped > 0) {
-                    $summary[] = "$skipped skipped (already exist)";
+                    $summary[] = "$skipped skipped";
+                }
+                if ($overwritten > 0) {
+                    $summary[] = "$overwritten overwritten";
                 }
                 if ($failed > 0) {
                     $summary[] = "$failed failed";
@@ -148,10 +194,21 @@ class Exporter
 
                 $message = 'Import complete: ' . implode(', ', $summary) . '.';
                 break;
+
+            case str_starts_with($notice, 'undo_success_'):
+                $count = (int) str_replace('undo_success_', '', $notice);
+                $message = "$count pattern" . ($count === 1 ? ' was' : 's were') . " successfully removed.";
+                break;
+
+            case $notice === 'undo_none':
+                $message = 'Nothing to undo.';
+                $class = 'notice-warning';
+                break;
         }
 
         if ($message) {
-            printf('<div class="notice %1$s is-dismissible"><p>%2$s</p></div>', esc_attr($class), esc_html($message));
+            printf('<div class="notice %s is-dismissible"><p>%s</p></div>', esc_attr($class), esc_html($message));
         }
     }
+
 }
