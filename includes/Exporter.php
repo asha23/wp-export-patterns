@@ -14,6 +14,7 @@ class Exporter
         echo '<div class="wrap">';
         echo '<h1>Import/Export Patterns</h1>';
 
+        // EXPORT FORM
         echo '<h2>Export Patterns</h2>';
         echo '<form method="post">';
         echo '<input type="hidden" name="wp_export_patterns_nonce" value="' . esc_attr(wp_create_nonce('wp_export_patterns')) . '">';
@@ -37,6 +38,7 @@ class Exporter
 
         echo '</form>';
 
+        // IMPORT FORM
         echo '<hr><h2>Import Patterns</h2>';
         echo '<form method="post" enctype="multipart/form-data">';
         echo '<input type="hidden" name="wp_import_patterns_nonce" value="' . esc_attr(wp_create_nonce('wp_import_patterns')) . '">';
@@ -50,17 +52,16 @@ class Exporter
     {
         if (isset($_POST['export_patterns'])) {
             if (!check_admin_referer('wp_export_patterns', 'wp_export_patterns_nonce')) {
-                add_option('_wp_export_notice', 'invalid_nonce');
+                update_option('_wp_export_notice', 'invalid_nonce');
                 return;
             }
 
             if (empty($_POST['export_ids']) || !is_array($_POST['export_ids'])) {
-                add_option('_wp_export_notice', 'no_selection');
+                update_option('_wp_export_notice', 'no_selection');
                 return;
             }
 
             $ids = array_map('intval', $_POST['export_ids']);
-
             $blocks = get_posts([
                 'post_type' => 'wp_block',
                 'post__in' => $ids,
@@ -77,7 +78,7 @@ class Exporter
 
             if (!headers_sent()) {
                 header('Content-Type: application/json');
-                header('Content-Disposition: attachment; filename=\"block-patterns-export.json\"');
+                header('Content-Disposition: attachment; filename="block-patterns-export.json"');
                 echo json_encode($export_data, JSON_PRETTY_PRINT);
                 exit;
             }
@@ -97,19 +98,60 @@ class Exporter
 
         delete_option('_wp_export_notice');
 
-        switch ($notice) {
-            case 'invalid_nonce':
-                $message = 'Security check failed. Please try again.';
+        $class = 'notice-success';
+        $message = '';
+
+        switch (true) {
+            case $notice === 'invalid_nonce':
                 $class = 'notice-error';
+                $message = 'Security check failed. Please try again.';
                 break;
-            case 'no_selection':
-                $message = 'Please select at least one pattern to export.';
+
+            case $notice === 'no_selection':
                 $class = 'notice-warning';
+                $message = 'Please select at least one pattern to export.';
                 break;
-            default:
-                return;
+
+            case $notice === 'import_invalid_request':
+                $class = 'notice-error';
+                $message = 'Import failed: invalid request.';
+                break;
+
+            case $notice === 'import_invalid_json':
+                $class = 'notice-error';
+                $message = 'Import failed: invalid or corrupt JSON file.';
+                break;
+
+            case $notice === 'import_none':
+                $class = 'notice-warning';
+                $message = 'No new patterns were imported. All may already exist.';
+                break;
+
+            case str_starts_with($notice, 'import_result_'):
+                $parts = explode('_', $notice);
+                $imported = (int) $parts[2];
+                $skipped  = (int) $parts[3];
+                $failed   = (int) $parts[4];
+
+                $summary = [];
+
+                if ($imported > 0) {
+                    $summary[] = "$imported imported";
+                }
+                if ($skipped > 0) {
+                    $summary[] = "$skipped skipped (already exist)";
+                }
+                if ($failed > 0) {
+                    $summary[] = "$failed failed";
+                    $class = 'notice-error';
+                }
+
+                $message = 'Import complete: ' . implode(', ', $summary) . '.';
+                break;
         }
 
-        printf('<div class="notice %1$s is-dismissible"><p>%2$s</p></div>', esc_attr($class), esc_html($message));
+        if ($message) {
+            printf('<div class="notice %1$s is-dismissible"><p>%2$s</p></div>', esc_attr($class), esc_html($message));
+        }
     }
 }

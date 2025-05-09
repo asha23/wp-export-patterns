@@ -10,9 +10,7 @@ class Importer
             !isset($_FILES['import_file']) ||
             !check_admin_referer('wp_import_patterns', 'wp_import_patterns_nonce')
         ) {
-            add_action('admin_notices', function () {
-                echo '<div class="notice notice-error is-dismissible"><p>Import failed: invalid request.</p></div>';
-            });
+            update_option('_wp_export_notice', 'import_invalid_request');
             return;
         }
 
@@ -20,16 +18,26 @@ class Importer
         $patterns = json_decode($json, true);
 
         if (!is_array($patterns)) {
-            add_action('admin_notices', function () {
-                echo '<div class="notice notice-error is-dismissible"><p>Import failed: invalid or corrupt JSON file.</p></div>';
-            });
+            update_option('_wp_export_notice', 'import_invalid_json');
             return;
         }
 
         $imported = 0;
+        $skipped = 0;
+        $failed = 0;
+
         foreach ($patterns as $pattern) {
+            if (
+                !isset($pattern['post_title'], $pattern['post_name'], $pattern['post_content'])
+            ) {
+                $failed++;
+                continue;
+            }
+
+            // Avoid duplicates based on post_name
             $exists = get_page_by_path($pattern['post_name'], OBJECT, 'wp_block');
             if ($exists) {
+                $skipped++;
                 continue;
             }
 
@@ -41,19 +49,17 @@ class Importer
                 'post_status'  => 'publish',
             ]);
 
-            if ($inserted) {
+            if ($inserted && !is_wp_error($inserted)) {
                 $imported++;
+            } else {
+                $failed++;
             }
         }
 
-        if ($imported > 0) {
-            add_action('admin_notices', function () use ($imported) {
-                echo '<div class="notice notice-success is-dismissible"><p>Successfully imported ' . esc_html($imported) . ' pattern(s).</p></div>';
-            });
+        if ($imported > 0 || $skipped > 0 || $failed > 0) {
+            update_option('_wp_export_notice', "import_result_{$imported}_{$skipped}_{$failed}");
         } else {
-            add_action('admin_notices', function () {
-                echo '<div class="notice notice-warning is-dismissible"><p>No new patterns were imported (all patterns may already exist).</p></div>';
-            });
+            update_option('_wp_export_notice', 'import_none');
         }
     }
 }
