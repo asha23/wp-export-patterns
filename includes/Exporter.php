@@ -12,7 +12,7 @@ class Exporter
         ]);
 
         echo '<div class="wrap">';
-        echo '<h1>WP Export Patterns</h1>';
+        echo '<h1>Import/Export Gutenberg Block Patterns</h1>';
 
         echo '<h2>Export</h2>';
         echo '<form method="post">';
