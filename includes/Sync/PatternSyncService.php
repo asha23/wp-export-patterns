@@ -6,17 +6,11 @@ class PatternSyncService
 {
     protected static string $patternDir = '/resources/patterns';
 
-    /**
-     * Get absolute path to the patterns folder
-     */
     public static function get_pattern_path(): string
     {
         return get_theme_file_path(self::$patternDir);
     }
 
-    /**
-     * Get all block patterns saved on disk
-     */
     public static function load_from_disk(): array
     {
         $path = self::get_pattern_path();
@@ -35,9 +29,6 @@ class PatternSyncService
         return $patterns;
     }
 
-    /**
-     * Export a pattern array to disk
-     */
     public static function export_to_disk(array $pattern): bool
     {
         if (!isset($pattern['post_name'], $pattern['post_title'], $pattern['post_content'])) {
@@ -55,31 +46,34 @@ class PatternSyncService
         return (bool) file_put_contents($filename, json_encode($pattern, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     }
 
-    /**
-     * Compare patterns on disk to patterns in DB
-     */
     public static function detect_unsynced(): array
     {
-        $disk = self::load_from_disk();
         $unsynced = [];
 
-        foreach ($disk as $slug => $pattern) {
-            $existing = get_page_by_path($slug, OBJECT, 'wp_block');
-            if (!$existing) {
+        $disk = self::load_from_disk();
+
+        $dbPatterns = get_posts([
+            'post_type'      => 'wp_block',
+            'posts_per_page' => -1,
+        ]);
+
+        foreach ($dbPatterns as $post) {
+            $slug = $post->post_name;
+            $title = $post->post_title;
+            $db_content = trim($post->post_content);
+
+            if (!isset($disk[$slug])) {
                 $unsynced[$slug] = [
-                    'title' => $pattern['post_title'],
-                    'status' => 'missing',
+                    'title' => $title,
+                    'status' => 'missing_from_disk',
                 ];
                 continue;
             }
 
-            // Check content hash
-            $disk_hash = md5(trim($pattern['post_content']));
-            $db_hash = md5(trim($existing->post_content));
-
-            if ($disk_hash !== $db_hash) {
+            $disk_content = trim($disk[$slug]['post_content'] ?? '');
+            if (md5($db_content) !== md5($disk_content)) {
                 $unsynced[$slug] = [
-                    'title' => $pattern['post_title'],
+                    'title' => $title,
                     'status' => 'outdated',
                 ];
             }
@@ -88,9 +82,6 @@ class PatternSyncService
         return $unsynced;
     }
 
-    /**
-     * Sync a pattern from disk into the DB
-     */
     public static function import_pattern(string $slug): bool
     {
         $path = self::get_pattern_path() . '/' . sanitize_file_name($slug) . '.json';
@@ -106,20 +97,35 @@ class PatternSyncService
         $existing = get_page_by_path($slug, OBJECT, 'wp_block');
         if ($existing) {
             $updated = wp_update_post([
-                'ID' => $existing->ID,
-                'post_title' => $data['post_title'],
+                'ID'           => $existing->ID,
+                'post_title'   => $data['post_title'],
                 'post_content' => $data['post_content'],
             ]);
             return !is_wp_error($updated);
         } else {
             $inserted = wp_insert_post([
-                'post_type' => 'wp_block',
-                'post_name' => $data['post_name'],
-                'post_title' => $data['post_title'],
+                'post_type'    => 'wp_block',
+                'post_name'    => $data['post_name'],
+                'post_title'   => $data['post_title'],
                 'post_content' => $data['post_content'],
-                'post_status' => 'publish',
+                'post_status'  => 'publish',
             ]);
             return !is_wp_error($inserted);
         }
+    }
+
+    public static function export_pattern(string $slug): bool
+    {
+        $post = get_page_by_path($slug, OBJECT, 'wp_block');
+
+        if (!$post) {
+            return false;
+        }
+
+        return self::export_to_disk([
+            'post_title'   => $post->post_title,
+            'post_name'    => $post->post_name,
+            'post_content' => $post->post_content,
+        ]);
     }
 }
