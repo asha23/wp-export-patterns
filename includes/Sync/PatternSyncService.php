@@ -29,22 +29,37 @@ class PatternSyncService
         return $patterns;
     }
 
-    public static function export_to_disk(array $pattern): bool
-    {
-        if (!isset($pattern['post_name'], $pattern['post_title'], $pattern['post_content'])) {
-            return false;
-        }
+    public static function export_to_disk(array $pattern): \WP_Error|bool
+	{
+		if (!isset($pattern['post_name'], $pattern['post_title'], $pattern['post_content'])) {
+			return new \WP_Error('pattern_invalid', 'Missing required pattern fields.');
+		}
 
-        $folder = self::get_pattern_path();
-        if (!is_dir($folder)) {
-            wp_mkdir_p($folder);
-        }
+		$folder = self::get_pattern_path();
 
-        $pattern['modified'] = current_time('c');
+		if (!is_dir($folder)) {
+			if (!wp_mkdir_p($folder)) {
+				return new \WP_Error('mkdir_failed', 'Failed to create pattern folder at: ' . $folder);
+			}
+		}
 
-        $filename = $folder . '/' . sanitize_file_name($pattern['post_name']) . '.json';
-        return (bool) file_put_contents($filename, json_encode($pattern, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-    }
+		if (!is_writable($folder)) {
+			return new \WP_Error('folder_not_writable', 'The patterns folder is not writable: ' . $folder);
+		}
+
+		$pattern['modified'] = current_time('c');
+
+		$filename = $folder . '/' . sanitize_file_name($pattern['post_name']) . '.json';
+
+		$result = file_put_contents($filename, json_encode($pattern, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+		if ($result === false) {
+			return new \WP_Error('write_failed', 'Failed to write pattern file: ' . $filename);
+		}
+
+		return true;
+	}
+
 
     public static function detect_unsynced(): array
     {
