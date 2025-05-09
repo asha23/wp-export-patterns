@@ -29,6 +29,7 @@ class Importer
             'session_id' => $session_id,
             'patterns'   => $patterns,
             'overwrite'  => false,
+            'timestamp'  => time(),
         ];
 
         update_option("_wp_preview_session_$session_id", $data, false);
