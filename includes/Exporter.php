@@ -6,10 +6,6 @@ class Exporter
 {
     public static function render_admin_page(): void
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['import_file'])) {
-            Importer::handle_upload();
-        }
-
         $blocks = get_posts([
             'post_type'      => 'wp_block',
             'posts_per_page' => -1,
@@ -18,6 +14,7 @@ class Exporter
         echo '<div class="wrap">';
         echo '<h1>Import/Export Patterns</h1>';
 
+        // Export form
         echo '<h2>Export Patterns</h2>';
         echo '<form method="post">';
         echo '<input type="hidden" name="wp_export_patterns_nonce" value="' . esc_attr(wp_create_nonce('wp_export_patterns')) . '">';
@@ -41,6 +38,7 @@ class Exporter
 
         echo '</form>';
 
+        // Import form
         echo '<hr><h2>Import Patterns</h2>';
         echo '<form method="post" enctype="multipart/form-data">';
         echo '<input type="hidden" name="wp_import_patterns_nonce" value="' . esc_attr(wp_create_nonce('wp_import_patterns')) . '">';
@@ -48,6 +46,7 @@ class Exporter
         echo '<input type="submit" name="import_patterns" class="button" value="Import">';
         echo '</form>';
 
+        // Undo last import
         if ($session = get_option('_wp_export_last_session')) {
             echo '<hr><h2>Undo Last Import</h2>';
             echo '<form method="post">';
@@ -55,6 +54,8 @@ class Exporter
             echo '<input type="submit" name="undo_import" class="button button-secondary" value="Undo Last Import">';
             echo '</form>';
         }
+
+        // Session log
         echo '<hr><h2>Import Session Log</h2>';
 
         $log = get_option('_wp_export_sessions', []);
@@ -88,16 +89,37 @@ class Exporter
                 echo '</form>';
                 echo '</td>';
                 echo '</tr>';
+
+                // Pattern title details
+                echo '<tr><td colspan="7" style="background: #fafafa; padding: 0 1rem;">';
+
+                if (!empty($data['imported_titles'])) {
+                    echo '<details style="margin: 0.5rem 0;"><summary><strong>Imported Patterns</strong></summary><ul>';
+                    foreach ($data['imported_titles'] as $title) {
+                        echo '<li>' . esc_html($title) . '</li>';
+                    }
+                    echo '</ul></details>';
+                }
+
+                if (!empty($data['overwritten_titles'])) {
+                    echo '<details style="margin: 0.5rem 0;"><summary><strong>Overwritten Patterns</strong></summary><ul>';
+                    foreach ($data['overwritten_titles'] as $title) {
+                        echo '<li>' . esc_html($title) . '</li>';
+                    }
+                    echo '</ul></details>';
+                }
+
+                echo '</td></tr>';
             }
 
             echo '</tbody></table>';
         }
+
         echo '</div>';
     }
 
     public static function maybe_handle_export(): void
     {
-        // Handle Undo
         if (isset($_POST['undo_import']) && check_admin_referer('undo_import', 'undo_import_nonce')) {
             $session = get_option('_wp_export_last_session');
             if ($session) {
@@ -125,7 +147,6 @@ class Exporter
             }
         }
 
-        // Handle Export
         if (isset($_POST['export_patterns'])) {
             if (!check_admin_referer('wp_export_patterns', 'wp_export_patterns_nonce')) {
                 update_option('_wp_export_notice', 'invalid_nonce');
@@ -138,7 +159,6 @@ class Exporter
             }
 
             $ids = array_map('intval', $_POST['export_ids']);
-
             $blocks = get_posts([
                 'post_type' => 'wp_block',
                 'post__in' => $ids,
@@ -159,7 +179,6 @@ class Exporter
             exit;
         }
 
-        // Handle Undo by session
         if (isset($_POST['undo_session_id']) && isset($_POST['undo_session_nonce'])) {
             $session_id = sanitize_text_field($_POST['undo_session_id']);
             if (!wp_verify_nonce($_POST['undo_session_nonce'], 'undo_session_' . $session_id)) {
@@ -236,7 +255,6 @@ class Exporter
                 break;
 
             case str_starts_with($notice, 'import_result_'):
-                // Format: import_result_{imported}_{skipped}_{overwritten}_{failed}
                 $parts = explode('_', $notice);
                 $imported    = (int) ($parts[2] ?? 0);
                 $skipped     = (int) ($parts[3] ?? 0);
@@ -277,5 +295,4 @@ class Exporter
             printf('<div class="notice %s is-dismissible"><p>%s</p></div>', esc_attr($class), esc_html($message));
         }
     }
-
 }
