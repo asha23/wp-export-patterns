@@ -21,8 +21,8 @@ add_action('admin_init', function () {
         return;
     }
 
-    Cleanup::clean_stale_previews();
-    Cleanup::limit_session_log();
+    \WPExportPatterns\Cleanup::clean_stale_previews();
+    \WPExportPatterns\Cleanup::limit_session_log();
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['import_file'])) {
         \WPExportPatterns\Importer::handle_upload();
