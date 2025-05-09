@@ -2,12 +2,6 @@
     "name": "yourname/wp-export-patterns",
     "description": "Export and import Gutenberg block patterns across WordPress sites.",
     "type": "wordpress-plugin",
-    "require": {
-        "php": ">=8.2"
-    },
-    "autoload": {
-        "psr-4": {
-            "WPExportPatterns\\": "includes/"
-        }
-    }
+    "author": "Ash Whiting for BrightLocal",
+    "license": "GPL-2.0-or-later",
 }
