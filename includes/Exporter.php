@@ -145,7 +145,38 @@ class Exporter
             update_option('_wp_export_notice', "pattern_deleted_$slug");
         }
 
-        // Leave existing logic (export, undo, import) untouched
+        if (isset($_POST['export_patterns'])) {
+            if (!check_admin_referer('wp_export_patterns', 'wp_export_patterns_nonce')) {
+                update_option('_wp_export_notice', 'invalid_nonce');
+                return;
+            }
+
+            if (empty($_POST['export_ids']) || !is_array($_POST['export_ids'])) {
+                update_option('_wp_export_notice', 'no_selection');
+                return;
+            }
+
+            $ids = array_map('intval', $_POST['export_ids']);
+
+            $blocks = get_posts([
+                'post_type' => 'wp_block',
+                'post__in' => $ids,
+                'posts_per_page' => -1,
+            ]);
+
+            $export_data = array_map(static function ($block) {
+                return [
+                    'post_title'   => $block->post_title,
+                    'post_name'    => $block->post_name,
+                    'post_content' => $block->post_content,
+                ];
+            }, $blocks);
+
+            header('Content-Type: application/json');
+            header('Content-Disposition: attachment; filename="block-patterns-export.json"');
+            echo json_encode($export_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
     }
 
     public static function show_notices(): void
