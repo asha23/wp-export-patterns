@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: WP Export Patterns
+ * Plugin Name: BrightLocal - Export Gutenberg Block Patterns
  * Description: Export and import Gutenberg block patterns across multiple WordPress sites.
  * Version: 1.0.0
  * Author: Ash Whiting for BrightLocal
