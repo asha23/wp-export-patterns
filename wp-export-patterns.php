@@ -14,11 +14,12 @@ require_once __DIR__ . '/includes/Exporter.php';
 require_once __DIR__ . '/includes/Importer.php';
 
 add_action('admin_init', ['WPExportPatterns\\Exporter', 'maybe_handle_export']);
+add_action('admin_notices', ['WPExportPatterns\\Exporter', 'show_notices']);
 
 add_action('admin_menu', function () {
     add_menu_page(
-        'Export/Import Patterns',
-        'Export/Import Patterns',
+        'Import/Export Patterns',
+        'Import/Export Patterns',
         'manage_options',
         'wp-export-patterns',
         'WPExportPatterns\\Exporter::render_admin_page'

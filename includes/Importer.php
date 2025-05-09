@@ -10,6 +10,9 @@ class Importer
             !isset($_FILES['import_file']) ||
             !check_admin_referer('wp_import_patterns', 'wp_import_patterns_nonce')
         ) {
+            add_action('admin_notices', function () {
+                echo '<div class="notice notice-error is-dismissible"><p>Import failed: invalid request.</p></div>';
+            });
             return;
         }
 
@@ -18,28 +21,39 @@ class Importer
 
         if (!is_array($patterns)) {
             add_action('admin_notices', function () {
-                echo '<div class="notice notice-error is-dismissible"><p>Import failed: invalid JSON file.</p></div>';
+                echo '<div class="notice notice-error is-dismissible"><p>Import failed: invalid or corrupt JSON file.</p></div>';
             });
             return;
         }
 
+        $imported = 0;
         foreach ($patterns as $pattern) {
             $exists = get_page_by_path($pattern['post_name'], OBJECT, 'wp_block');
             if ($exists) {
-                continue; // Skip existing
+                continue;
             }
 
-            wp_insert_post([
+            $inserted = wp_insert_post([
                 'post_type'    => 'wp_block',
                 'post_title'   => sanitize_text_field($pattern['post_title']),
                 'post_name'    => sanitize_title($pattern['post_name']),
                 'post_content' => wp_kses_post($pattern['post_content']),
                 'post_status'  => 'publish',
             ]);
+
+            if ($inserted) {
+                $imported++;
+            }
         }
 
-        add_action('admin_notices', function () {
-            echo '<div class="notice notice-success is-dismissible"><p>Patterns imported successfully.</p></div>';
-        });
+        if ($imported > 0) {
+            add_action('admin_notices', function () use ($imported) {
+                echo '<div class="notice notice-success is-dismissible"><p>Successfully imported ' . esc_html($imported) . ' pattern(s).</p></div>';
+            });
+        } else {
+            add_action('admin_notices', function () {
+                echo '<div class="notice notice-warning is-dismissible"><p>No new patterns were imported (all patterns may already exist).</p></div>';
+            });
+        }
     }
 }
