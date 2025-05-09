@@ -57,7 +57,43 @@ class Exporter
             echo '<input type="submit" name="undo_import" class="button button-secondary" value="Undo Last Import">';
             echo '</form>';
         }
+        echo '<hr><h2>Import Session Log</h2>';
 
+        $log = get_option('_wp_export_sessions', []);
+
+        if (empty($log)) {
+            echo '<p>No import sessions found.</p>';
+        } else {
+            echo '<table class="widefat striped"><thead><tr>';
+            echo '<th>Session ID</th><th>Timestamp</th><th>Imported</th><th>Skipped</th><th>Overwritten</th><th>Failed</th><th>Undo</th>';
+            echo '</tr></thead><tbody>';
+
+            foreach ($log as $session_id => $data) {
+                $time = date('Y-m-d H:i:s', $data['timestamp']);
+                $imported = (int) ($data['imported'] ?? 0);
+                $skipped = (int) ($data['skipped'] ?? 0);
+                $overwritten = (int) ($data['overwritten'] ?? 0);
+                $failed = (int) ($data['failed'] ?? 0);
+
+                echo '<tr>';
+                echo '<td style="font-family:monospace;">' . esc_html($session_id) . '</td>';
+                echo '<td>' . esc_html($time) . '</td>';
+                echo '<td>' . esc_html($imported) . '</td>';
+                echo '<td>' . esc_html($skipped) . '</td>';
+                echo '<td>' . esc_html($overwritten) . '</td>';
+                echo '<td>' . esc_html($failed) . '</td>';
+                echo '<td>';
+                echo '<form method="post" style="margin:0;">';
+                echo '<input type="hidden" name="undo_session_id" value="' . esc_attr($session_id) . '">';
+                echo '<input type="hidden" name="undo_session_nonce" value="' . esc_attr(wp_create_nonce('undo_session_' . $session_id)) . '">';
+                echo '<input type="submit" class="button" value="Undo">';
+                echo '</form>';
+                echo '</td>';
+                echo '</tr>';
+            }
+
+            echo '</tbody></table>';
+        }
         echo '</div>';
     }
 
@@ -123,6 +159,39 @@ class Exporter
             header('Content-Disposition: attachment; filename="block-patterns-export.json"');
             echo json_encode($export_data, JSON_PRETTY_PRINT);
             exit;
+        }
+
+        // Handle Undo by session
+        if (isset($_POST['undo_session_id']) && isset($_POST['undo_session_nonce'])) {
+            $session_id = sanitize_text_field($_POST['undo_session_id']);
+            if (!wp_verify_nonce($_POST['undo_session_nonce'], 'undo_session_' . $session_id)) {
+                update_option('_wp_export_notice', 'invalid_nonce');
+                return;
+            }
+
+            $blocks = get_posts([
+                'post_type'      => 'wp_block',
+                'meta_key'       => '_import_session',
+                'meta_value'     => $session_id,
+                'posts_per_page' => -1,
+            ]);
+
+            $deleted = 0;
+            foreach ($blocks as $block) {
+                if (wp_delete_post($block->ID, true)) {
+                    $deleted++;
+                }
+            }
+
+            $log = get_option('_wp_export_sessions', []);
+            unset($log[$session_id]);
+            update_option('_wp_export_sessions', $log);
+
+            update_option('_wp_export_notice', $deleted > 0
+                ? "undo_success_$deleted"
+                : "undo_none");
+
+            return;
         }
     }
 
