@@ -37,7 +37,7 @@ class Exporter
         $unsynced = PatternSyncService::detect_unsynced();
 
         if (empty($unsynced)) {
-            echo '<div class="notice notice-success inline"><p>All patterns are in sync.</p></div>';
+            echo '<div class="notice notice-success is-dismissible"><p>Sweet! All patterns are in sync.</p></div>';
         } else {
             echo '<div class="notice notice-warning inline">';
             echo '<p><strong>' . count($unsynced) . ' pattern' . (count($unsynced) === 1 ? '' : 's') . ' out of sync:</strong></p>';
