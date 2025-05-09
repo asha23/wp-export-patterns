@@ -5,16 +5,16 @@ namespace WPExportPatterns\Sync;
 class PatternSyncAdmin
 {
     public static function register(): void
-	{
-		add_submenu_page(
-			'wp-export-patterns',                // Parent slug
-			'Sync Block Patterns',               // Page title
-			'Sync Patterns',                     // Menu title
-			'manage_options',                    // Capability
-			'wp-pattern-sync',                   // Menu slug
-			[self::class, 'render']              // Callback
-		);
-	}
+    {
+        add_submenu_page(
+            'wp-export-patterns',         // Parent slug
+            'Sync Block Patterns',        // Page title
+            'Sync Patterns',              // Menu label (sidebar)
+            'manage_options',             // Capability
+            'wp-pattern-sync',            // Menu slug
+            [self::class, 'render']       // Callback
+        );
+    }
 
     public static function render(): void
     {
@@ -22,24 +22,30 @@ class PatternSyncAdmin
             wp_die('Access denied.');
         }
 
-        // Handle sync trigger
+        // Handle sync
         if (
             isset($_POST['sync_slug'], $_POST['sync_nonce']) &&
             wp_verify_nonce($_POST['sync_nonce'], 'sync_pattern_' . $_POST['sync_slug'])
         ) {
             $slug = sanitize_title($_POST['sync_slug']);
             $success = PatternSyncService::import_pattern($slug);
-            if ($success) {
-                echo '<div class="notice notice-success"><p>Pattern synced: ' . esc_html($slug) . '</p></div>';
-            } else {
-                echo '<div class="notice notice-error"><p>Failed to sync: ' . esc_html($slug) . '</p></div>';
-            }
-        }
 
-        $unsynced = PatternSyncService::detect_unsynced();
+            if ($success) {
+                add_settings_error('pattern_sync', 'sync_success', "Pattern synced: $slug", 'updated');
+            } else {
+                add_settings_error('pattern_sync', 'sync_error', "Failed to sync: $slug", 'error');
+            }
+
+            // Refresh detection result
+            $unsynced = PatternSyncService::detect_unsynced();
+        } else {
+            $unsynced = PatternSyncService::detect_unsynced();
+        }
 
         echo '<div class="wrap">';
         echo '<h1>Pattern Sync</h1>';
+
+        settings_errors('pattern_sync');
 
         if (empty($unsynced)) {
             echo '<p>All patterns are in sync.</p>';

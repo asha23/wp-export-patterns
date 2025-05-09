@@ -43,8 +43,8 @@ add_action('admin_notices', ['WPExportPatterns\\Exporter', 'show_notices']);
 
 add_action('admin_menu', function () {
     add_menu_page(
-        'Import/Export Patterns',
-        'Import/Export Patterns',
+        'Pattern Manager',
+        'Pattern Manager',
         'manage_options',
         'wp-export-patterns',
         'WPExportPatterns\\Exporter::render_admin_page'
@@ -59,5 +59,5 @@ add_action('admin_menu', function () {
         'WPExportPatterns\\Preview::render_preview_screen'
     );
 
-    \WPExportPatterns\Sync\PatternSyncAdmin::register(); // ✅ required
+    \WPExportPatterns\Sync\PatternSyncAdmin::register(); 
 });
