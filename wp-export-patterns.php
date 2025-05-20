@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name: BrightLocal - Export Gutenberg Block Patterns
- * Description: Export and import Gutenberg block patterns across multiple WordPress sites.
+ * Plugin Name: BrightLocal - Sync Gutenberg Block Patterns
+ * Description: Sync Gutenberg block patterns across multiple WordPress sites.
  * Version: 1.0.0
  * Author: Ash Whiting for BrightLocal
  */
@@ -43,8 +43,8 @@ add_action('admin_notices', ['WPExportPatterns\\Exporter', 'show_notices']);
 
 add_action('admin_menu', function () {
     add_menu_page(
-        'Pattern Manager',
-        'Pattern Manager',
+        'Pattern Sync',
+        'Pattern Sync',
         'manage_options',
         'wp-export-patterns',
         'WPExportPatterns\\Exporter::render_admin_page',
