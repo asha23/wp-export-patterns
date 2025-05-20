@@ -15,17 +15,26 @@ class PatternSyncAdmin
             [self::class, 'render']
         );
 
+        // Add dummy submenu item for Pattern Manager
         add_submenu_page(
             'wp-export-patterns',
             'Pattern Manager',
             'Pattern Manager',
             'manage_options',
-            'pattern-manager',
-            function () {
-                wp_redirect(admin_url('site-editor.php?p=/pattern'));
-                exit;
-            }
+            'pattern-manager-dummy', // dummy slug
+            '__return_null'          // no page to render
         );
+
+        // Immediately override that submenu's link
+        global $submenu;
+        if (isset($submenu['wp-export-patterns'])) {
+            foreach ($submenu['wp-export-patterns'] as &$item) {
+                if ($item[2] === 'pattern-manager-dummy') {
+                    $item[2] = 'site-editor.php?p=/pattern'; // Real Site Editor URL
+                    break;
+                }
+            }
+        }
     }
 
     public static function render(): void
