@@ -43,8 +43,8 @@ add_action('admin_notices', ['WPExportPatterns\\Exporter', 'show_notices']);
 
 add_action('admin_menu', function () {
     add_menu_page(
-        'Pattern Sync',
-        'Pattern Sync',
+        'Pattern Options',
+        'Pattern Options',
         'manage_options',
         'wp-export-patterns',
         'WPExportPatterns\\Exporter::render_admin_page',
