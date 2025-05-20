@@ -14,6 +14,18 @@ class PatternSyncAdmin
             'wp-pattern-sync',
             [self::class, 'render']
         );
+
+        add_submenu_page(
+            'wp-export-patterns',
+            'Pattern Manager',
+            'Pattern Manager',
+            'manage_options',
+            'pattern-manager',
+            function () {
+                wp_redirect(admin_url('site-editor.php?p=/pattern'));
+                exit;
+            }
+        );
     }
 
     public static function render(): void
