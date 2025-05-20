@@ -30,7 +30,7 @@ class Exporter
         }
 
         echo '<div class="wrap">';
-        echo '<h1>Import/Export Patterns</h1>';
+        echo '<h1>Pattern Sync</h1>';
 
         // Show sync status
         $unsynced = PatternSyncService::detect_unsynced();

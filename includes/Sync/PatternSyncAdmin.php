@@ -8,8 +8,8 @@ class PatternSyncAdmin
     {
         add_submenu_page(
             'wp-export-patterns',
-            'Sync Block Patterns',
-            'Sync Patterns',
+            'Sync Status',
+            'Sync Status',
             'manage_options',
             'wp-pattern-sync',
             [self::class, 'render']
