@@ -42,21 +42,25 @@ class PatternSyncAdmin
             wp_die('Access denied.');
         }
 
-        // Sync
-        if (in_array($status, ['outdated', 'missing_from_disk', 'missing_from_db'], true)) {
-            echo '<form method="post" style="display:inline-block; margin-right:1rem;">';
-            echo '<input type="hidden" name="sync_slug" value="' . esc_attr($slug) . '">';
-            echo '<input type="hidden" name="sync_nonce" value="' . esc_attr(wp_create_nonce('sync_pattern_' . $slug)) . '">';
+        // SYNC
+        if (
+            isset($_POST['sync_slug'], $_POST['sync_nonce']) &&
+            wp_verify_nonce($_POST['sync_nonce'], 'sync_pattern_' . $_POST['sync_slug'])
+        ) {
+            $slug = sanitize_title($_POST['sync_slug']);
+            $source = PatternSyncService::load_from_disk();
 
-            $buttonLabel = match ($status) {
-                'missing_from_db' => 'Import to DB',
-                'missing_from_disk' => 'Export to Disk',
-                'outdated' => 'Sync',
-                default => 'Sync',
-            };
+            $result = isset($source[$slug])
+                ? PatternSyncService::import_pattern($slug)
+                : PatternSyncService::export_pattern($slug);
 
-            echo '<input type="submit" class="button button-primary" value="' . esc_attr($buttonLabel) . '">';
-            echo '</form>';
+            if ($result === true) {
+                add_settings_error('pattern_sync', 'sync_success', "Pattern synced: $slug", 'updated');
+            } elseif (is_wp_error($result)) {
+                add_settings_error('pattern_sync', 'sync_error', "Sync failed: $slug - " . $result->get_error_message(), 'error');
+            } else {
+                add_settings_error('pattern_sync', 'sync_error', "Sync failed: $slug - unknown error", 'error');
+            }
         }
 
         // TRASH
@@ -99,38 +103,45 @@ class PatternSyncAdmin
         echo '<thead><tr><th>Title</th><th>Slug</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody>';
 
         foreach ($patterns as $slug => $info) {
-            $status = esc_html($info['status']);
-            $title = esc_html($info['title']);
-            $notes = esc_html($info['notes'] ?? '');
-            $trashed = !empty($info['trashed']);
+            $raw_status = $info['status'];
+            $status     = esc_html($raw_status);
+            $title      = esc_html($info['title']);
+            $notes      = esc_html($info['notes'] ?? '');
+            $trashed    = !empty($info['trashed']);
+            $safe_slug  = esc_html($slug);
 
             echo '<tr>';
             echo "<td>{$title}</td>";
-            echo "<td><code>{$slug}</code></td>";
+            echo "<td><code>{$safe_slug}</code></td>";
             echo "<td>{$status}</td>";
             echo "<td>{$notes}</td>";
             echo '<td>';
 
-            // Sync
-            if (in_array($status, ['outdated', 'missing_from_disk'], true)) {
+            if (in_array($raw_status, ['outdated', 'missing_from_disk', 'missing_from_db'], true)) {
+                $buttonLabel = match ($raw_status) {
+                    'missing_from_db' => 'Import to DB',
+                    'missing_from_disk' => 'Export to Disk',
+                    'outdated' => 'Sync',
+                    default => 'Sync',
+                };
+
                 echo '<form method="post" style="display:inline-block; margin-right:1rem;">';
                 echo '<input type="hidden" name="sync_slug" value="' . esc_attr($slug) . '">';
                 echo '<input type="hidden" name="sync_nonce" value="' . esc_attr(wp_create_nonce('sync_pattern_' . $slug)) . '">';
-                echo '<input type="submit" class="button button-primary" value="Sync">';
+                echo '<input type="submit" class="button button-primary" value="' . esc_attr($buttonLabel) . '">';
                 echo '</form>';
             }
 
-            // Trash
-            if ($status === 'orphaned') {
+            if ($raw_status === 'orphaned') {
                 echo '<form method="post" style="display:inline-block;">';
                 echo '<input type="hidden" name="trash_slug" value="' . esc_attr($slug) . '">';
                 echo '<input type="hidden" name="trash_nonce" value="' . esc_attr(wp_create_nonce('trash_pattern_' . $slug)) . '">';
+                echo '<input type="hidden" name="confirm_delete" value="1">';
                 echo '<label style="font-size: 12px; margin-right: 4px;"><input type="checkbox" name="confirm_trash" value="1"> Are you sure?</label>';
                 echo '<input type="submit" class="button button-secondary" value="Trash">';
                 echo '</form>';
             }
 
-            // Restore
             if ($trashed) {
                 echo '<form method="post" style="display:inline-block;">';
                 echo '<input type="hidden" name="restore_slug" value="' . esc_attr($slug) . '">';
@@ -145,4 +156,5 @@ class PatternSyncAdmin
 
         echo '</tbody></table></div>';
     }
+
 }
