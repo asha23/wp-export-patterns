@@ -10,6 +10,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+$post_type_obj = get_post_type_object('wp_block');
+error_log($post_type_obj ? 'wp_block is registered' : 'wp_block is NOT registered');
+
 require_once __DIR__ . '/includes/Exporter.php';
 require_once __DIR__ . '/includes/Importer.php';
 require_once __DIR__ . '/includes/Preview.php';

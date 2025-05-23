@@ -78,16 +78,20 @@ class Importer
         
             $inserted = wp_insert_post([
                 'post_type'    => 'wp_block',
-                'post_title'   => $post_title,
-                'post_name'    => $post_name,
-                'post_content' => $post_content,
+                'post_title'   => sanitize_text_field($pattern['post_title']),
+                'post_name'    => sanitize_title($pattern['post_name']),
+                'post_content' => wp_kses_post($pattern['post_content']),
                 'post_status'  => 'publish',
             ]);
-        
+            
             if ($inserted && !is_wp_error($inserted)) {
                 $imported++;
             } else {
                 $db_failed++;
+                error_log('[IMPORT FAIL] wp_insert_post failed for: ' . $pattern['post_name']);
+                if (is_wp_error($inserted)) {
+                    error_log('[IMPORT ERROR] ' . $inserted->get_error_message());
+                }
             }
         }
         
