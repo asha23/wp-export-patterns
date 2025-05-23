@@ -46,44 +46,51 @@ class Importer
             if (
                 !isset($pattern['post_title'], $pattern['post_name'], $pattern['post_content'])
             ) {
-                $failed++;
+                $db_failed++;
                 continue;
             }
-
-            $existing = get_page_by_path($pattern['post_name'], OBJECT, 'wp_block');
-
-            if ($existing) {
-                if ($overwrite) {
-                    $updated = wp_update_post([
-                        'ID'           => $existing->ID,
-                        'post_title'   => sanitize_text_field($pattern['post_title']),
-                        'post_content' => wp_kses_post($pattern['post_content']),
-                    ]);
-                    if ($updated && !is_wp_error($updated)) {
-                        $overwritten++;
-                    } else {
-                        $failed++;
-                    }
+        
+            $post_title   = sanitize_text_field($pattern['post_title']);
+            $post_name    = sanitize_title($pattern['post_name']);
+            $post_content = wp_kses_post($pattern['post_content']);
+        
+            $existing = get_page_by_path($post_name, OBJECT, 'wp_block');
+        
+            if ($existing && !$overwrite) {
+                $skipped++;
+                continue;
+            }
+        
+            if ($existing && $overwrite) {
+                $updated = wp_update_post([
+                    'ID'           => $existing->ID,
+                    'post_title'   => $post_title,
+                    'post_content' => $post_content,
+                ]);
+        
+                if ($updated && !is_wp_error($updated)) {
+                    $overwritten++;
                 } else {
-                    $skipped++;
+                    $db_failed++;
                 }
                 continue;
             }
-
+        
             $inserted = wp_insert_post([
                 'post_type'    => 'wp_block',
-                'post_title'   => sanitize_text_field($pattern['post_title']),
-                'post_name'    => sanitize_title($pattern['post_name']),
-                'post_content' => wp_kses_post($pattern['post_content']),
+                'post_title'   => $post_title,
+                'post_name'    => $post_name,
+                'post_content' => $post_content,
                 'post_status'  => 'publish',
             ]);
-
+        
             if ($inserted && !is_wp_error($inserted)) {
                 $imported++;
             } else {
-                $failed++;
+                $db_failed++;
             }
         }
+        
 
         // Optionally export all patterns to disk after import
         if ($writeToDisk) {
