@@ -42,29 +42,42 @@ class Exporter
             echo '</div>';
         }
 
-        // Selective Export
         echo '<hr><h2>Export Selected Patterns</h2>';
         echo '<form method="post">';
         echo '<input type="hidden" name="wp_export_patterns_nonce" value="' . esc_attr(wp_create_nonce('wp_export_patterns')) . '">';
 
         if ($blocks) {
-            echo '<ul>';
+            echo '<table class="widefat striped">';
+            echo '<thead>';
+            echo '<tr>';
+            echo '<th style="width: 50px;">Export</th>';
+            echo '<th>Pattern</th>';
+            echo '</tr>';
+            echo '</thead>';
+            echo '<tbody>';
+
             foreach ($blocks as $block) {
                 $title = esc_html($block->post_title ?: $block->post_name);
-                echo '<li>';
-                echo '<label>';
-                echo '<input type="checkbox" name="export_ids[]" value="' . esc_attr($block->ID) . '"> ';
-                echo $title;
-                echo '</label>';
-                echo '</li>';
+                $id = esc_attr($block->ID);
+
+                echo '<tr>';
+                echo '<td style="text-align: center;"><input type="checkbox" name="export_ids[]" value="' . $id . '"></td>';
+                echo '<td>' . $title . '</td>';
+                echo '</tr>';
             }
-            echo '</ul>';
+
+            echo '</tbody>';
+            echo '</table>';
+
+            echo '<p style="margin-top: 1rem;">';
             echo '<input type="submit" name="export_patterns" class="button button-primary" value="Export Selected Patterns">';
+            echo '</p>';
         } else {
             echo '<p>No patterns found.</p>';
         }
 
         echo '</form>';
+
 
         echo '<hr><h2>Import Patterns</h2>';
         echo '<form method="post" enctype="multipart/form-data" style="max-width: 600px;">';
@@ -242,7 +255,7 @@ class Exporter
             } else {
                 echo '<div class="notice notice-success is-dismissible"><p>';
                 echo sprintf(
-                    '%d imported, %d skipped, %d overwritten, %d DB failed, %d disk write errors, %d disk skipped (no change).',
+                    '%d imported, %d skipped, %d overwritten, %d DB Entry Already Exists, %d disk write errors, %d disk skipped (no change).',
                     $imported,
                     $skipped,
                     $overwritten,
