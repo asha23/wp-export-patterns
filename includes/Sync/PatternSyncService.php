@@ -258,10 +258,10 @@ class PatternSyncService
         $errors = [];
 
         $post = get_page_by_path($slug, OBJECT, 'wp_block');
-        if ($post && $post->post_status !== 'trash') {
-            $trashed = wp_trash_post($post->ID);
-            if (!$trashed) {
-                $errors[] = 'Failed to move DB pattern to trash.';
+        if ($post) {
+            $deleted = wp_delete_post($post->ID, true); // ← force delete (skip trash)
+            if (!$deleted) {
+                $errors[] = 'Failed to delete DB pattern.';
             }
         }
 
