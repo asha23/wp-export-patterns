@@ -113,20 +113,28 @@ class Exporter
             foreach ($blocks as $block) {
                 $slug = esc_attr($block->post_name);
                 $title = esc_html($block->post_title ?: $slug);
-
+            
                 echo '<tr>';
                 echo '<td>' . $title . '</td>';
                 echo '<td><code>' . $slug . '</code></td>';
+            
+                // Are you sure checkbox cell
                 echo '<td>';
                 echo '<form method="post">';
+                echo '<label><input type="checkbox" name="confirm_delete" value="1"> Are you sure?</label>';
+                echo '</td>';
+            
+                // Delete button cell
+                echo '<td>';
+                
                 echo '<input type="hidden" name="delete_slug" value="' . $slug . '">';
                 echo '<input type="hidden" name="delete_nonce" value="' . esc_attr(wp_create_nonce('delete_pattern_' . $slug)) . '">';
-                echo '<label><input type="checkbox" name="confirm_delete" value="1"> Are you sure?</label> ';
                 echo '<input type="submit" name="delete_pattern" class="button button-secondary" value="Delete">';
                 echo '</form>';
                 echo '</td>';
                 echo '</tr>';
             }
+            
 
             echo '</tbody></table>';
         } else {
