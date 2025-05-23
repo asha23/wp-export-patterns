@@ -4,6 +4,41 @@ namespace WPExportPatterns;
 
 class Importer
 {
+    // public static function handle_upload(): void
+    // {
+    //     if (
+    //         !isset($_FILES['import_file']) ||
+    //         !check_admin_referer('wp_import_patterns', 'wp_import_patterns_nonce')
+    //     ) {
+    //         update_option('_wp_export_notice', 'import_invalid_request');
+    //         wp_safe_redirect(admin_url('admin.php?page=wp-export-patterns'));
+    //         exit;
+    //     }
+
+    //     $json = file_get_contents($_FILES['import_file']['tmp_name']);
+    //     $patterns = json_decode($json, true);
+
+    //     if (!is_array($patterns)) {
+    //         update_option('_wp_export_notice', 'import_invalid_json');
+    //         wp_safe_redirect(admin_url('admin.php?page=wp-export-patterns'));
+    //         exit;
+    //     }
+
+    //     $session_id = wp_generate_uuid4();
+    //     $data = [
+    //         'session_id' => $session_id,
+    //         'patterns'   => $patterns,
+    //         'overwrite'  => false,
+    //         'timestamp'  => time(),
+    //     ];
+
+    //     update_option("_wp_preview_session_$session_id", $data, false);
+    //     update_option('_wp_export_preview_session', $session_id);
+
+    //     wp_safe_redirect(admin_url('admin.php?page=wp-pattern-preview'));
+    //     exit;
+    // }
+
     public static function handle_upload(): void
     {
         if (
@@ -11,8 +46,7 @@ class Importer
             !check_admin_referer('wp_import_patterns', 'wp_import_patterns_nonce')
         ) {
             update_option('_wp_export_notice', 'import_invalid_request');
-            wp_safe_redirect(admin_url('admin.php?page=wp-export-patterns'));
-            exit;
+            return;
         }
 
         $json = file_get_contents($_FILES['import_file']['tmp_name']);
@@ -20,24 +54,46 @@ class Importer
 
         if (!is_array($patterns)) {
             update_option('_wp_export_notice', 'import_invalid_json');
-            wp_safe_redirect(admin_url('admin.php?page=wp-export-patterns'));
-            exit;
+            return;
         }
 
-        $session_id = wp_generate_uuid4();
-        $data = [
-            'session_id' => $session_id,
-            'patterns'   => $patterns,
-            'overwrite'  => false,
-            'timestamp'  => time(),
-        ];
+        $imported = 0;
+        $skipped = 0;
+        $failed = 0;
 
-        update_option("_wp_preview_session_$session_id", $data, false);
-        update_option('_wp_export_preview_session', $session_id);
+        foreach ($patterns as $pattern) {
+            if (
+                !isset($pattern['post_title'], $pattern['post_name'], $pattern['post_content'])
+            ) {
+                $failed++;
+                continue;
+            }
 
-        wp_safe_redirect(admin_url('admin.php?page=wp-pattern-preview'));
-        exit;
+            $existing = get_page_by_path($pattern['post_name'], OBJECT, 'wp_block');
+
+            if ($existing) {
+                $skipped++;
+                continue;
+            }
+
+            $inserted = wp_insert_post([
+                'post_type'    => 'wp_block',
+                'post_title'   => sanitize_text_field($pattern['post_title']),
+                'post_name'    => sanitize_title($pattern['post_name']),
+                'post_content' => wp_kses_post($pattern['post_content']),
+                'post_status'  => 'publish',
+            ]);
+
+            if ($inserted && !is_wp_error($inserted)) {
+                $imported++;
+            } else {
+                $failed++;
+            }
+        }
+
+        update_option('_wp_export_notice', "import_result_{$imported}_{$skipped}_0_{$failed}");
     }
+
 
     public static function handle_confirmed_import(): void
     {

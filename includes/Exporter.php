@@ -196,5 +196,12 @@ class Exporter
             $slug = str_replace('pattern_deleted_', '', $notice);
             echo '<div class="notice notice-success is-dismissible"><p>Pattern deleted: ' . esc_html($slug) . '</p></div>';
         }
+
+        if (str_starts_with($notice, 'import_result_')) {
+            list(, $imported, $skipped, , $failed) = explode('_', $notice);
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo sprintf('%d imported, %d skipped, %d failed.', (int) $imported, (int) $skipped, (int) $failed);
+            echo '</p></div>';
+        }
     }
 }
