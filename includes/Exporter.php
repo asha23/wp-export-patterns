@@ -24,17 +24,18 @@ class Exporter
         // Show sync status
         $patterns = PatternSyncService::detect_unsynced();
 
-        if (empty($patterns)) {
+        // Filter only the truly out-of-sync ones
+        $outOfSync = array_filter($patterns, fn($p) => in_array($p['status'], ['missing_from_disk', 'outdated'], true));
+
+        if (empty($outOfSync)) {
             echo '<div class="notice notice-success is-dismissible"><p>Sweet! All patterns are in sync.</p></div>';
         } else {
             echo '<div class="notice notice-warning inline">';
-            echo '<p><strong>' . count($patterns) . ' pattern' . (count($patterns) === 1 ? '' : 's') . ' out of sync:</strong></p>';
+            echo '<p><strong>' . count($outOfSync) . ' pattern' . (count($outOfSync) === 1 ? '' : 's') . ' out of sync:</strong></p>';
             echo '<ul style="margin-left:1em;">';
-            foreach ($patterns as $slug => $info) {
-                if (in_array($info['status'], ['outdated', 'missing_from_disk'], true)) {
-                    $status = $info['status'] === 'missing_from_disk' ? 'Missing from disk' : 'Outdated';
-                    echo '<li>' . esc_html($info['title']) . ' <em>(' . $status . ')</em></li>';
-                }
+            foreach ($outOfSync as $slug => $info) {
+                $label = $info['status'] === 'missing_from_disk' ? 'Missing from disk' : 'Outdated';
+                echo '<li>' . esc_html($info['title']) . ' <em>(' . $label . ')</em></li>';
             }
             echo '</ul>';
             echo '<p><a href="' . esc_url(admin_url('admin.php?page=wp-pattern-sync')) . '" class="button">Open Sync Tool</a></p>';
