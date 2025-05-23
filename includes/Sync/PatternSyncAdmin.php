@@ -57,9 +57,9 @@ class PatternSyncAdmin
             if ($result === true) {
                 add_settings_error('pattern_sync', 'sync_success', "Pattern synced: $slug", 'updated');
             } elseif (is_wp_error($result)) {
-                add_settings_error('pattern_sync', 'sync_error', "Sync failed: $slug – " . $result->get_error_message(), 'error');
+                add_settings_error('pattern_sync', 'sync_error', "Sync failed: $slug - " . $result->get_error_message(), 'error');
             } else {
-                add_settings_error('pattern_sync', 'sync_error', "Sync failed: $slug – unknown error", 'error');
+                add_settings_error('pattern_sync', 'sync_error', "Sync failed: $slug - unknown error", 'error');
             }
         }
 
@@ -74,7 +74,7 @@ class PatternSyncAdmin
             if ($result === true) {
                 add_settings_error('pattern_sync', 'trashed', "Pattern trashed: $slug", 'updated');
             } elseif (is_wp_error($result)) {
-                add_settings_error('pattern_sync', 'trash_failed', "Trash failed: $slug – " . $result->get_error_message(), 'error');
+                add_settings_error('pattern_sync', 'trash_failed', "Trash failed: $slug - " . $result->get_error_message(), 'error');
             }
         }
 
@@ -89,7 +89,7 @@ class PatternSyncAdmin
             if ($result === true) {
                 add_settings_error('pattern_sync', 'restored', "Pattern restored: $slug", 'updated');
             } elseif (is_wp_error($result)) {
-                add_settings_error('pattern_sync', 'restore_failed', "Restore failed: $slug – " . $result->get_error_message(), 'error');
+                add_settings_error('pattern_sync', 'restore_failed', "Restore failed: $slug - " . $result->get_error_message(), 'error');
             }
         }
 
