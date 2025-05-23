@@ -96,25 +96,25 @@ class PatternSyncService
     public static function detect_unsynced(): array
     {
         $results = [];
-
+    
         $disk = self::load_from_disk();
         $patternFolder = self::get_pattern_path();
         $diskSlugs = array_keys($disk);
-
+    
         $dbPatterns = get_posts([
             'post_type'      => 'wp_block',
             'posts_per_page' => -1,
             'post_status'    => ['publish', 'trash'],
         ]);
-
+    
         $dbSlugs = [];
-
+    
         foreach ($dbPatterns as $post) {
             $slug = $post->post_name;
             $dbSlugs[] = $slug;
             $title = $post->post_title;
             $db_content = trim($post->post_content);
-
+    
             if (!isset($disk[$slug])) {
                 $results[$slug] = [
                     'title'   => $title,
@@ -124,9 +124,9 @@ class PatternSyncService
                 ];
                 continue;
             }
-
+    
             $disk_content = trim($disk[$slug]['post_content'] ?? '');
-
+    
             if (md5($db_content) !== md5($disk_content)) {
                 $results[$slug] = [
                     'title'   => $title,
@@ -143,23 +143,23 @@ class PatternSyncService
                 ];
             }
         }
-
-        // Disk patterns not in DB — mark as missing_from_db
-        foreach ($diskSlugs as $slug) {
+    
+        // Files on disk that have no matching DB post
+        foreach ($disk as $slug => $pattern) {
             if (!in_array($slug, $dbSlugs, true)) {
-                $title = $disk[$slug]['post_title'] ?? $slug;
-
                 $results[$slug] = [
-                    'title'   => $title,
+                    'title'   => $pattern['post_title'] ?? $slug,
                     'status'  => 'missing_from_db',
                     'trashed' => false,
-                    'notes'   => 'Exists on disk but not in DB.',
+                    'notes'   => 'Exists on disk but missing from DB.',
                 ];
             }
         }
-
+    
         return $results;
     }
+    
+
 
 
 
