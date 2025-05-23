@@ -42,13 +42,6 @@ class Exporter
             echo '</div>';
         }
 
-        // Export All Patterns
-        echo '<hr><h2>Export All Patterns to Disk</h2>';
-        echo '<form method="post">';
-        echo '<input type="hidden" name="export_all_nonce" value="' . esc_attr(wp_create_nonce('export_all_patterns')) . '">';
-        echo '<input type="submit" name="export_all_patterns" class="button button-secondary" value="Export All Patterns">';
-        echo '</form>';
-
         // Selective Export
         echo '<hr><h2>Export Selected Patterns</h2>';
         echo '<form method="post">';
