@@ -6,7 +6,12 @@ class Importer
 {
     public static function handle_upload(): void
     {
+        $imported = 0;
+        $skipped = 0;
+        $overwritten = 0;
+        $db_failed = 0;
         $disk_failed = 0;
+        $disk_skipped = 0;
 
         if (
             !isset($_FILES['import_file']) ||
@@ -88,14 +93,27 @@ class Importer
                     'post_name'    => $pattern['post_name'],
                     'post_content' => $pattern['post_content'],
                 ]);
-
+        
                 if ($result instanceof \WP_Error || $result === false) {
                     $disk_failed++;
-                    error_log("[Disk Write Failed] {$pattern['post_name']}: " . ($result instanceof \WP_Error ? $result->get_error_message() : 'Unknown error'));
+                } elseif ($result === true) {
+                    // If true and file already matched, assume skip
+                    $slug = $pattern['post_name'];
+                    $folder = \WPExportPatterns\Sync\PatternSyncService::get_pattern_path();
+                    $file = $folder . '/' . sanitize_file_name($slug) . '.json';
+        
+                    if (file_exists($file)) {
+                        $existing = json_decode(file_get_contents($file), true);
+                        $match = $existing['post_content'] === $pattern['post_content'];
+                        if ($match) {
+                            $disk_skipped++;
+                        }
+                    }
                 }
             }
         }
 
-        update_option('_wp_export_notice', "import_result_{$imported}_{$skipped}_{$overwritten}_{$failed}_{$disk_failed}");
+        update_option('_wp_export_notice', "import_result_{$imported}_{$skipped}_{$overwritten}_{$db_failed}_{$disk_failed}_{$disk_skipped}");
+
     }
 }

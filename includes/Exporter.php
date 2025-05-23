@@ -220,15 +220,30 @@ class Exporter
 
         if (str_starts_with($notice, 'import_result_')) {
             $parts = explode('_', $notice);
-            $imported = (int) ($parts[1] ?? 0);
-            $skipped = (int) ($parts[2] ?? 0);
-            $overwritten = (int) ($parts[3] ?? 0);
-            $failed = (int) ($parts[4] ?? 0);
-            $disk_failed = (int) ($parts[5] ?? 0);
+            $imported     = (int) ($parts[1] ?? 0);
+            $skipped      = (int) ($parts[2] ?? 0);
+            $overwritten  = (int) ($parts[3] ?? 0);
+            $db_failed    = (int) ($parts[4] ?? 0);
+            $disk_failed  = (int) ($parts[5] ?? 0);
+            $disk_skipped = (int) ($parts[6] ?? 0);
         
-            echo '<div class="notice notice-success is-dismissible"><p>';
-            echo sprintf('%d imported, %d skipped, %d overwritten, %d failed, %d disk write errors.', $imported, $skipped, $overwritten, $failed, $disk_failed);
-            echo '</p></div>';
+            $summary = [];
+        
+            if ($imported > 0)     $summary[] = "$imported imported";
+            if ($skipped > 0)      $summary[] = "$skipped skipped";
+            if ($overwritten > 0)  $summary[] = "$overwritten overwritten";
+            if ($db_failed > 0)    $summary[] = "$db_failed DB failed";
+            if ($disk_failed > 0)  $summary[] = "$disk_failed disk write errors";
+            if ($disk_skipped > 0) $summary[] = "$disk_skipped disk skipped (no change)";
+        
+            if (empty($summary)) {
+                echo '<div class="notice notice-info is-dismissible"><p>No patterns imported.</p></div>';
+            } else {
+                echo '<div class="notice notice-success is-dismissible"><p>';
+                echo implode(', ', $summary) . '.';
+                echo '</p></div>';
+            }
         }
+        
     }
 }
