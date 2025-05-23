@@ -48,7 +48,7 @@ add_action('admin_menu', function () {
         'manage_options',
         'wp-export-patterns',
         function () {
-            \WPExportPatterns\Exporter::maybe_handle_export();   // this must run on form submission
+            // \WPExportPatterns\Exporter::maybe_handle_export();   // this must run on form submission
             \WPExportPatterns\Exporter::render_admin_page();     // then render the page
         },
         plugins_url('assets/icon.png', __FILE__)

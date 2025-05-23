@@ -183,43 +183,6 @@ class Exporter
             echo json_encode($export_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
         }
-
-        // Export ALL patterns to disk manually (from export all button)
-        if (
-            isset($_POST['export_all_patterns']) &&
-            check_admin_referer('export_all_patterns', 'export_all_nonce')
-        ) {
-            $blocks = get_posts([
-                'post_type' => 'wp_block',
-                'posts_per_page' => -1,
-            ]);
-
-            $failures = [];
-
-            foreach ($blocks as $block) {
-                $result = PatternSyncService::export_to_disk([
-                    'post_title'   => $block->post_title,
-                    'post_name'    => $block->post_name,
-                    'post_content' => $block->post_content,
-                ]);
-            
-                if (is_wp_error($result)) {
-                    error_log("[Pattern Export Failed] {$block->post_name}: " . $result->get_error_message());
-                } elseif ($result === false) {
-                    error_log("[Pattern Export Failed] {$block->post_name}: file_put_contents returned false");
-                } else {
-                    error_log("[Pattern Export OK] {$block->post_name}");
-                }
-            }
-
-            if (!empty($failures)) {
-                update_option('_wp_export_notice', 'export_failed_' . base64_encode(json_encode($failures)));
-            } else {
-                update_option('_wp_export_notice', 'all_patterns_exported');
-            }
-
-            update_option('_wp_export_notice', 'all_patterns_exported');
-        }
     }
 
 
