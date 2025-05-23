@@ -194,12 +194,26 @@ class Exporter
                 'posts_per_page' => -1,
             ]);
 
+            $failures = [];
+
             foreach ($blocks as $block) {
-                PatternSyncService::export_to_disk([
+                $result = PatternSyncService::export_to_disk([
                     'post_title'   => $block->post_title,
                     'post_name'    => $block->post_name,
                     'post_content' => $block->post_content,
                 ]);
+
+                if ($result instanceof \WP_Error) {
+                    $failures[] = $block->post_name . ': ' . $result->get_error_message();
+                } elseif ($result === false) {
+                    $failures[] = $block->post_name . ': Unknown failure';
+                }
+            }
+
+            if (!empty($failures)) {
+                update_option('_wp_export_notice', 'export_failed_' . base64_encode(json_encode($failures)));
+            } else {
+                update_option('_wp_export_notice', 'all_patterns_exported');
             }
 
             update_option('_wp_export_notice', 'all_patterns_exported');
