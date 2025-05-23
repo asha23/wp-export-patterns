@@ -68,9 +68,11 @@ class PatternSyncService
 
     public static function detect_unsynced(): array
     {
-        $unsynced = [];
+        $results = [];
 
         $disk = self::load_from_disk();
+        $patternFolder = self::get_pattern_path();
+        $diskSlugs = array_keys($disk);
 
         $dbPatterns = get_posts([
             'post_type'      => 'wp_block',
@@ -78,44 +80,97 @@ class PatternSyncService
             'post_status'    => ['publish', 'trash'],
         ]);
 
+        $dbSlugs = [];
+
         foreach ($dbPatterns as $post) {
             $slug = $post->post_name;
+            $dbSlugs[] = $slug;
             $title = $post->post_title;
             $db_content = trim($post->post_content);
 
             if (!isset($disk[$slug])) {
-                $unsynced[$slug] = [
+                $results[$slug] = [
                     'title' => $title,
                     'status' => 'missing_from_disk',
-                    'trashed' => $post->post_status === 'trash',
+                    'notes' => 'Exists in DB but not in folder.',
                 ];
                 continue;
             }
 
             $disk_content = trim($disk[$slug]['post_content'] ?? '');
             if (md5($db_content) !== md5($disk_content)) {
-                $unsynced[$slug] = [
+                $results[$slug] = [
                     'title' => $title,
                     'status' => 'outdated',
-                    'trashed' => $post->post_status === 'trash',
+                    'notes' => 'Disk and DB contents differ.',
+                ];
+            } else {
+                $results[$slug] = [
+                    'title' => $title,
+                    'status' => 'in_sync',
+                    'notes' => '',
                 ];
             }
-
-            // Auto-delete orphaned JSON files if the DB pattern no longer exists
-            $existingSlugs = wp_list_pluck($dbPatterns, 'post_name');
-
-            $patternFolder = self::get_pattern_path();
-            foreach (glob($patternFolder . '/*.json') as $file) {
-                $filename = basename($file, '.json');
-                if (!in_array($filename, $existingSlugs, true)) {
-                    @unlink($file);
-                }
-            }
-
         }
 
-        return $unsynced;
+        // Detect orphaned files on disk
+        foreach ($diskSlugs as $slug) {
+            if (!in_array($slug, $dbSlugs, true)) {
+                $results[$slug] = [
+                    'title' => $slug,
+                    'status' => 'orphaned',
+                    'notes' => 'Exists on disk but not in DB.',
+                ];
+            }
+        }
+
+        return $results;
     }
+
+    public static function render_sync_status_table(): void
+    {
+        $results = self::detect_unsynced();
+
+        echo '<div class="wrap"><h2>Pattern Sync Status</h2>';
+        echo '<table class="widefat striped">';
+        echo '<thead><tr><th>Slug</th><th>Title</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody>';
+
+        foreach ($results as $slug => $info) {
+            $status = esc_html($info['status']);
+            $title = esc_html($info['title']);
+            $notes = esc_html($info['notes']);
+            echo '<tr>';
+            echo "<td>{$slug}</td>";
+            echo "<td>{$title}</td>";
+            echo "<td>{$status}</td>";
+            echo "<td>{$notes}</td>";
+            echo '<td>';
+
+            if ($status === 'outdated' || $status === 'missing_from_disk') {
+                echo '<form method="post" style="display:inline;">';
+                wp_nonce_field('sync_pattern_' . $slug, 'sync_nonce');
+                echo '<input type="hidden" name="sync_slug" value="' . esc_attr($slug) . '">';
+                echo '<button type="submit" name="sync_pattern" class="button-primary">Sync</button>';
+                echo '</form> ';
+            }
+
+            if ($status === 'orphaned') {
+                echo '<form method="post" style="display:inline;">';
+                wp_nonce_field('delete_pattern_' . $slug, 'delete_nonce');
+                echo '<input type="hidden" name="delete_slug" value="' . esc_attr($slug) . '">';
+                echo '<input type="hidden" name="confirm_delete" value="1">';
+                echo '<button type="submit" name="delete_pattern" class="button-secondary">Delete</button>';
+                echo '</form>';
+            }
+
+            echo '</td>';
+            echo '</tr>';
+        }
+
+        echo '</tbody></table></div>';
+    }
+
+
 
     public static function import_pattern(string $slug): \WP_Error|bool
     {
