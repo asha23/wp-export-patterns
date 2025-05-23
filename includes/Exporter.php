@@ -66,13 +66,34 @@ class Exporter
 
         echo '</form>';
 
-        // Import form
         echo '<hr><h2>Import Patterns</h2>';
-        echo '<form method="post" enctype="multipart/form-data">';
+        echo '<form method="post" enctype="multipart/form-data" style="max-width: 600px;">';
         echo '<input type="hidden" name="wp_import_patterns_nonce" value="' . esc_attr(wp_create_nonce('wp_import_patterns')) . '">';
-        echo '<input type="file" name="import_file" required> ';
-        echo '<input type="submit" name="import_patterns" class="button" value="Import">';
+
+        echo '<table class="form-table">';
+        echo '<tr>';
+        echo '<th scope="row"><label for="import_file">Pattern JSON File</label></th>';
+        echo '<td><input type="file" name="import_file" id="import_file" required></td>';
+        echo '</tr>';
+
+        echo '<tr>';
+        echo '<th scope="row">Overwrite Existing</th>';
+        echo '<td><label><input type="checkbox" name="overwrite_existing" value="1" checked> Overwrite patterns with matching slugs</label></td>';
+        echo '</tr>';
+
+        echo '<tr>';
+        echo '<th scope="row">Write to Disk</th>';
+        echo '<td><label><input type="checkbox" name="write_to_disk" value="1" checked> Also export to disk after import</label></td>';
+        echo '</tr>';
+
+        echo '<tr>';
+        echo '<th scope="row"></th>';
+        echo '<td><input type="submit" name="import_patterns" class="button button-primary" value="Import"></td>';
+        echo '</tr>';
+        echo '</table>';
+
         echo '</form>';
+
 
         // Undo last import
         if ($session = get_option('_wp_export_last_session')) {
@@ -198,9 +219,9 @@ class Exporter
         }
 
         if (str_starts_with($notice, 'import_result_')) {
-            list(, $imported, $skipped, , $failed) = explode('_', $notice);
+            list(, $imported, $skipped, $overwritten, $failed) = explode('_', $notice);
             echo '<div class="notice notice-success is-dismissible"><p>';
-            echo sprintf('%d imported, %d skipped, %d failed.', (int) $imported, (int) $skipped, (int) $failed);
+            echo sprintf('%d imported, %d skipped, %d overwritten, %d failed.', (int)$imported, (int)$skipped, (int)$overwritten, (int)$failed);
             echo '</p></div>';
         }
     }
