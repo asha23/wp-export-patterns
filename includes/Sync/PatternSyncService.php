@@ -30,11 +30,16 @@ class PatternSyncService
             $data = json_decode(file_get_contents($file), true);
             if (isset($data['post_name'], $data['post_content'])) {
                 $patterns[$data['post_name']] = $data;
+            } else {
+                error_log("[PATTERN LOAD SKIP] Invalid file: $file");
             }
         }
 
+        error_log('[PATTERN LOADED] Slugs: ' . implode(', ', array_keys($patterns)));
+
         return $patterns;
     }
+
 
     public static function export_to_disk(array $pattern): \WP_Error|bool
     {
