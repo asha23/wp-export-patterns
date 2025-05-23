@@ -96,13 +96,13 @@ class Exporter
 
 
         // Undo last import
-        if ($session = get_option('_wp_export_last_session')) {
-            echo '<hr><h2>Undo Last Import</h2>';
-            echo '<form method="post">';
-            echo '<input type="hidden" name="undo_import_nonce" value="' . esc_attr(wp_create_nonce('undo_import')) . '">';
-            echo '<input type="submit" name="undo_import" class="button button-secondary" value="Undo Last Import">';
-            echo '</form>';
-        }
+        // if ($session = get_option('_wp_export_last_session')) {
+        //     echo '<hr><h2>Undo Last Import</h2>';
+        //     echo '<form method="post">';
+        //     echo '<input type="hidden" name="undo_import_nonce" value="' . esc_attr(wp_create_nonce('undo_import')) . '">';
+        //     echo '<input type="submit" name="undo_import" class="button button-secondary" value="Undo Last Import">';
+        //     echo '</form>';
+        // }
 
         // Deletion table
         echo '<hr><h2>Delete Patterns</h2>';
