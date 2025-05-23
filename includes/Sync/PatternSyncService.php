@@ -27,11 +27,25 @@ class PatternSyncService
                 continue;
             }
 
-            $data = json_decode(file_get_contents($file), true);
-            if (isset($data['post_name'], $data['post_content'])) {
-                $patterns[$data['post_name']] = $data;
-            } else {
-                error_log("[PATTERN LOAD SKIP] Invalid file: $file");
+            $json = file_get_contents($file);
+            $data = json_decode($json, true);
+
+            // Skip malformed
+            if (!$data || !is_array($data)) {
+                error_log("[PATTERN LOAD ERROR] Malformed JSON in: $file");
+                continue;
+            }
+
+            // Support both single object and array of patterns
+            $items = isset($data[0]) ? $data : [$data];
+
+            foreach ($items as $pattern) {
+                if (!isset($pattern['post_name'], $pattern['post_content'])) {
+                    error_log("[PATTERN LOAD ERROR] Missing required keys in: $file");
+                    continue;
+                }
+
+                $patterns[$pattern['post_name']] = $pattern;
             }
         }
 
