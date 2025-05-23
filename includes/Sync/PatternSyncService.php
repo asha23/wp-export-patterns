@@ -37,34 +37,61 @@ class PatternSyncService
     }
 
     public static function export_to_disk(array $pattern): \WP_Error|bool
-    {
-        if (!isset($pattern['post_name'], $pattern['post_title'], $pattern['post_content'])) {
-            return new \WP_Error('pattern_invalid', 'Missing required pattern fields.');
-        }
-
-        $folder = self::get_pattern_path();
-
-        if (!is_dir($folder)) {
-            if (!wp_mkdir_p($folder)) {
-                return new \WP_Error('mkdir_failed', 'Failed to create pattern folder at: ' . $folder);
-            }
-        }
-
-        if (!is_writable($folder)) {
-            return new \WP_Error('folder_not_writable', 'The patterns folder is not writable: ' . $folder);
-        }
-
-        $pattern['modified'] = current_time('c');
-        $filename = $folder . '/' . sanitize_file_name($pattern['post_name']) . '.json';
-
-        $result = file_put_contents($filename, json_encode($pattern, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-
-        if ($result === false) {
-            return new \WP_Error('write_failed', 'Failed to write pattern file: ' . $filename);
-        }
-
-        return true;
+{
+    if (!isset($pattern['post_name'], $pattern['post_content'])) {
+        return new \WP_Error('pattern_invalid', 'Missing required pattern fields.');
     }
+
+    $pattern['post_title'] ??= $pattern['post_name'];
+
+    $folder = self::get_pattern_path();
+
+    if (!is_dir($folder) && !wp_mkdir_p($folder)) {
+        return new \WP_Error('mkdir_failed', 'Failed to create pattern folder at: ' . $folder);
+    }
+
+    if (!is_writable($folder)) {
+        return new \WP_Error('folder_not_writable', 'The patterns folder is not writable: ' . $folder);
+    }
+
+    $filename = $folder . '/' . sanitize_file_name($pattern['post_name']) . '.json';
+
+    // Load existing file if it exists
+    if (file_exists($filename)) {
+        $existing = json_decode(file_get_contents($filename), true);
+
+        // Compare only the relevant fields (ignore previous 'modified')
+        $existing_clean = [
+            'post_title'   => $existing['post_title'] ?? '',
+            'post_name'    => $existing['post_name'] ?? '',
+            'post_content' => $existing['post_content'] ?? '',
+        ];
+
+        $incoming_clean = [
+            'post_title'   => $pattern['post_title'],
+            'post_name'    => $pattern['post_name'],
+            'post_content' => $pattern['post_content'],
+        ];
+
+        if ($existing_clean === $incoming_clean) {
+            return true; // Nothing changed — skip write
+        }
+    }
+
+    // Only set modified if we’re actually writing the file
+    $pattern['modified'] = current_time('c');
+
+    $json = json_encode($pattern, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    $result = file_put_contents($filename, $json);
+
+    if ($result === false) {
+        return new \WP_Error('write_failed', 'Failed to write pattern file: ' . $filename);
+    }
+
+    return true;
+}
+
+
 
     public static function detect_unsynced(): array
     {
