@@ -18,40 +18,38 @@ class Exporter
             wp_mkdir_p($syncFolder);
         }
 
-        $existingFiles = glob($syncFolder . '/*.json');
-        if (empty($existingFiles) && !empty($blocks)) {
-            foreach ($blocks as $block) {
-                PatternSyncService::export_to_disk([
-                    'post_title'   => $block->post_title,
-                    'post_name'    => $block->post_name,
-                    'post_content' => $block->post_content,
-                ]);
-            }
-        }
-
         echo '<div class="wrap">';
         echo '<h1>Pattern Sync</h1>';
 
         // Show sync status
-        $unsynced = PatternSyncService::detect_unsynced();
+        $patterns = PatternSyncService::detect_unsynced();
 
-        if (empty($unsynced)) {
+        if (empty($patterns)) {
             echo '<div class="notice notice-success is-dismissible"><p>Sweet! All patterns are in sync.</p></div>';
         } else {
             echo '<div class="notice notice-warning inline">';
-            echo '<p><strong>' . count($unsynced) . ' pattern' . (count($unsynced) === 1 ? '' : 's') . ' out of sync:</strong></p>';
+            echo '<p><strong>' . count($patterns) . ' pattern' . (count($patterns) === 1 ? '' : 's') . ' out of sync:</strong></p>';
             echo '<ul style="margin-left:1em;">';
-            foreach ($unsynced as $slug => $info) {
-                $status = $info['status'] === 'missing_from_disk' ? 'Missing from disk' : 'Outdated';
-                echo '<li>' . esc_html($info['title']) . ' <em>(' . $status . ')</em></li>';
+            foreach ($patterns as $slug => $info) {
+                if (in_array($info['status'], ['outdated', 'missing_from_disk'], true)) {
+                    $status = $info['status'] === 'missing_from_disk' ? 'Missing from disk' : 'Outdated';
+                    echo '<li>' . esc_html($info['title']) . ' <em>(' . $status . ')</em></li>';
+                }
             }
             echo '</ul>';
             echo '<p><a href="' . esc_url(admin_url('admin.php?page=wp-pattern-sync')) . '" class="button">Open Sync Tool</a></p>';
             echo '</div>';
         }
 
-        // Export form
-        echo '<h2>Export Patterns</h2>';
+        // Export All Patterns
+        echo '<hr><h2>Export All Patterns to Disk</h2>';
+        echo '<form method="post">';
+        echo '<input type="hidden" name="export_all_nonce" value="' . esc_attr(wp_create_nonce('export_all_patterns')) . '">';
+        echo '<input type="submit" name="export_all_patterns" class="button button-secondary" value="Export All Patterns">';
+        echo '</form>';
+
+        // Selective Export
+        echo '<hr><h2>Export Selected Patterns</h2>';
         echo '<form method="post">';
         echo '<input type="hidden" name="wp_export_patterns_nonce" value="' . esc_attr(wp_create_nonce('wp_export_patterns')) . '">';
 
@@ -93,7 +91,6 @@ class Exporter
 
         // Deletion table
         echo '<hr><h2>Delete Patterns</h2>';
-
         if ($blocks) {
             echo '<table class="widefat striped">';
             echo '<thead><tr><th>Title</th><th>Slug</th><th>Actions</th></tr></thead><tbody>';
@@ -124,8 +121,10 @@ class Exporter
         echo '</div>';
     }
 
+
     public static function maybe_handle_export(): void
     {
+        // Handle individual delete
         if (
             isset($_POST['delete_pattern'], $_POST['delete_slug'], $_POST['delete_nonce'], $_POST['confirm_delete']) &&
             wp_verify_nonce($_POST['delete_nonce'], 'delete_pattern_' . $_POST['delete_slug'])
@@ -133,18 +132,24 @@ class Exporter
             $slug = sanitize_title($_POST['delete_slug']);
 
             $post = get_page_by_path($slug, OBJECT, 'wp_block');
+            $deleted_from_db = false;
+
             if ($post) {
-                wp_delete_post($post->ID, true);
+                $deleted_from_db = wp_delete_post($post->ID, true) !== false;
             }
 
-            $file = PatternSyncService::get_pattern_path() . '/' . sanitize_file_name($slug) . '.json';
-            if (file_exists($file)) {
-                unlink($file);
+            // Only delete file if DB deletion succeeded
+            if ($deleted_from_db) {
+                $file = PatternSyncService::get_pattern_path() . '/' . sanitize_file_name($slug) . '.json';
+                if (file_exists($file)) {
+                    unlink($file);
+                }
             }
 
             update_option('_wp_export_notice', "pattern_deleted_$slug");
         }
 
+        // Export selected patterns
         if (isset($_POST['export_patterns'])) {
             if (!check_admin_referer('wp_export_patterns', 'wp_export_patterns_nonce')) {
                 update_option('_wp_export_notice', 'invalid_nonce');
@@ -177,7 +182,29 @@ class Exporter
             echo json_encode($export_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
         }
+
+        // Export ALL patterns to disk manually (from export all button)
+        if (
+            isset($_POST['export_all_patterns']) &&
+            check_admin_referer('export_all_patterns', 'export_all_nonce')
+        ) {
+            $blocks = get_posts([
+                'post_type' => 'wp_block',
+                'posts_per_page' => -1,
+            ]);
+
+            foreach ($blocks as $block) {
+                PatternSyncService::export_to_disk([
+                    'post_title'   => $block->post_title,
+                    'post_name'    => $block->post_name,
+                    'post_content' => $block->post_content,
+                ]);
+            }
+
+            update_option('_wp_export_notice', 'all_patterns_exported');
+        }
     }
+
 
     public static function show_notices(): void
     {
