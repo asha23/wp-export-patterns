@@ -83,7 +83,7 @@ class Exporter
 
         echo '<tr>';
         echo '<th scope="row">Write to Disk</th>';
-        echo '<td><label><input type="checkbox" name="write_to_disk" value="1" checked> Also export to disk after import</label></td>';
+        echo '<td><label><input type="checkbox" name="write_to_disk" value="1" checked> Also add to disk after import</label></td>';
         echo '</tr>';
 
         echo '<tr>';
@@ -219,9 +219,15 @@ class Exporter
         }
 
         if (str_starts_with($notice, 'import_result_')) {
-            list(, $imported, $skipped, $overwritten, $failed) = explode('_', $notice);
+            $parts = explode('_', $notice);
+            $imported = (int) ($parts[1] ?? 0);
+            $skipped = (int) ($parts[2] ?? 0);
+            $overwritten = (int) ($parts[3] ?? 0);
+            $failed = (int) ($parts[4] ?? 0);
+            $disk_failed = (int) ($parts[5] ?? 0);
+        
             echo '<div class="notice notice-success is-dismissible"><p>';
-            echo sprintf('%d imported, %d skipped, %d overwritten, %d failed.', (int)$imported, (int)$skipped, (int)$overwritten, (int)$failed);
+            echo sprintf('%d imported, %d skipped, %d overwritten, %d failed, %d disk write errors.', $imported, $skipped, $overwritten, $failed, $disk_failed);
             echo '</p></div>';
         }
     }

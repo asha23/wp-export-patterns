@@ -6,6 +6,8 @@ class Importer
 {
     public static function handle_upload(): void
     {
+        $disk_failed = 0;
+
         if (
             !isset($_FILES['import_file']) ||
             !check_admin_referer('wp_import_patterns', 'wp_import_patterns_nonce')
@@ -81,14 +83,19 @@ class Importer
         // Optionally export all patterns to disk after import
         if ($writeToDisk) {
             foreach ($patterns as $pattern) {
-                \WPExportPatterns\Sync\PatternSyncService::export_to_disk([
+                $result = \WPExportPatterns\Sync\PatternSyncService::export_to_disk([
                     'post_title'   => $pattern['post_title'],
                     'post_name'    => $pattern['post_name'],
                     'post_content' => $pattern['post_content'],
                 ]);
+
+                if ($result instanceof \WP_Error || $result === false) {
+                    $disk_failed++;
+                    error_log("[Disk Write Failed] {$pattern['post_name']}: " . ($result instanceof \WP_Error ? $result->get_error_message() : 'Unknown error'));
+                }
             }
         }
 
-        update_option('_wp_export_notice', "import_result_{$imported}_{$skipped}_{$overwritten}_{$failed}");
+        update_option('_wp_export_notice', "import_result_{$imported}_{$skipped}_{$overwritten}_{$failed}_{$disk_failed}");
     }
 }
