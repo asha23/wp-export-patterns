@@ -202,11 +202,13 @@ class Exporter
                     'post_name'    => $block->post_name,
                     'post_content' => $block->post_content,
                 ]);
-
-                if ($result instanceof \WP_Error) {
-                    $failures[] = $block->post_name . ': ' . $result->get_error_message();
+            
+                if (is_wp_error($result)) {
+                    error_log("[Pattern Export Failed] {$block->post_name}: " . $result->get_error_message());
                 } elseif ($result === false) {
-                    $failures[] = $block->post_name . ': Unknown failure';
+                    error_log("[Pattern Export Failed] {$block->post_name}: file_put_contents returned false");
+                } else {
+                    error_log("[Pattern Export OK] {$block->post_name}");
                 }
             }
 
