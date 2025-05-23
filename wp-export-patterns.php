@@ -28,13 +28,11 @@ add_action('admin_init', function () {
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['import_file'])) {
         \WPExportPatterns\Importer::handle_upload();
-        exit;
     }
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_import'])) {
-        \WPExportPatterns\Importer::handle_confirmed_import();
-        exit;
-    }
+    // if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_import'])) {
+    //     \WPExportPatterns\Importer::handle_confirmed_import();
+    // }
 
     \WPExportPatterns\Exporter::maybe_handle_export();
 });
