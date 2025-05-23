@@ -210,6 +210,7 @@ class Exporter
                     'post_title'   => $block->post_title,
                     'post_name'    => $block->post_name,
                     'post_content' => $block->post_content,
+                    'modified'     => get_post_modified_time('c', true, $block),
                 ];
             }, $blocks);
 
