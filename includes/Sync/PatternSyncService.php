@@ -240,8 +240,21 @@ class PatternSyncService
         }
 
         $data = json_decode(file_get_contents($path), true);
-        if (!is_array($data) || !isset($data['post_name'], $data['post_content'])) {
+        if (!is_array($data)) {
             return new \WP_Error('invalid_json', 'Pattern JSON is invalid.');
+        }
+
+        // If the file is an array of patterns, extract the correct one
+        if (array_keys($data) === range(0, count($data) - 1)) {
+            $match = array_filter($data, fn($p) => isset($p['post_name']) && $p['post_name'] === $slug);
+            if (empty($match)) {
+                return new \WP_Error('not_found', "Pattern with slug $slug not found in array.");
+            }
+            $data = array_values($match)[0];
+        }
+
+        if (!isset($data['post_name'], $data['post_content'])) {
+            return new \WP_Error('invalid_json', 'Pattern JSON is missing required fields.');
         }
 
         $existing = get_page_by_path($slug, OBJECT, 'wp_block');
@@ -265,6 +278,7 @@ class PatternSyncService
 
         return is_wp_error($inserted) ? $inserted : true;
     }
+
 
     public static function export_pattern(string $slug): \WP_Error|bool
     {
