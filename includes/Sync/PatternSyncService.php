@@ -92,33 +92,38 @@ class PatternSyncService
                 $results[$slug] = [
                     'title' => $title,
                     'status' => 'missing_from_disk',
-                    'notes' => 'Exists in DB but not in folder.',
+                    'trashed' => $post->post_status === 'trash',
+                    'notes' => 'Exists in DB but no matching file on disk.',
                 ];
                 continue;
             }
 
             $disk_content = trim($disk[$slug]['post_content'] ?? '');
+
             if (md5($db_content) !== md5($disk_content)) {
                 $results[$slug] = [
                     'title' => $title,
                     'status' => 'outdated',
-                    'notes' => 'Disk and DB contents differ.',
+                    'trashed' => $post->post_status === 'trash',
+                    'notes' => 'Content differs between DB and disk.',
                 ];
             } else {
                 $results[$slug] = [
                     'title' => $title,
                     'status' => 'in_sync',
+                    'trashed' => $post->post_status === 'trash',
                     'notes' => '',
                 ];
             }
         }
 
-        // Detect orphaned files on disk
+        // Orphaned disk files (exist on disk, not in DB)
         foreach ($diskSlugs as $slug) {
             if (!in_array($slug, $dbSlugs, true)) {
                 $results[$slug] = [
                     'title' => $slug,
                     'status' => 'orphaned',
+                    'trashed' => false,
                     'notes' => 'Exists on disk but not in DB.',
                 ];
             }
@@ -126,6 +131,7 @@ class PatternSyncService
 
         return $results;
     }
+
 
     public static function render_sync_status_table(): void
     {
