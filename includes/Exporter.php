@@ -227,23 +227,25 @@ class Exporter
             $disk_failed  = (int) ($parts[5] ?? 0);
             $disk_skipped = (int) ($parts[6] ?? 0);
         
-            $summary = [];
+            $total_activity = $imported + $skipped + $overwritten + $db_failed + $disk_failed + $disk_skipped;
         
-            if ($imported > 0)     $summary[] = "$imported imported";
-            if ($skipped > 0)      $summary[] = "$skipped skipped";
-            if ($overwritten > 0)  $summary[] = "$overwritten overwritten";
-            if ($db_failed > 0)    $summary[] = "$db_failed DB failed";
-            if ($disk_failed > 0)  $summary[] = "$disk_failed disk write errors";
-            if ($disk_skipped > 0) $summary[] = "$disk_skipped disk skipped (no change)";
-        
-            if (empty($summary)) {
+            if ($total_activity === 0) {
                 echo '<div class="notice notice-info is-dismissible"><p>No patterns imported.</p></div>';
             } else {
                 echo '<div class="notice notice-success is-dismissible"><p>';
-                echo implode(', ', $summary) . '.';
+                echo sprintf(
+                    '%d imported, %d skipped, %d overwritten, %d DB failed, %d disk write errors, %d disk skipped (no change).',
+                    $imported,
+                    $skipped,
+                    $overwritten,
+                    $db_failed,
+                    $disk_failed,
+                    $disk_skipped
+                );
                 echo '</p></div>';
             }
         }
+        
         
     }
 }
