@@ -173,29 +173,33 @@ class PatternSyncService
 
         foreach ($results as $slug => $info) {
             $status = esc_html($info['status']);
-            $title = esc_html($info['title']);
-            $notes = esc_html($info['notes']);
+            $title  = esc_html($info['title']);
+            $notes  = esc_html($info['notes']);
+            $safe_slug = esc_html($slug);
+
             echo '<tr>';
-            echo "<td>{$slug}</td>";
+            echo "<td>{$safe_slug}</td>";
             echo "<td>{$title}</td>";
             echo "<td>{$status}</td>";
             echo "<td>{$notes}</td>";
             echo '<td>';
 
-            if ($status === 'outdated' || $status === 'missing_from_disk') {
+            // Show Sync button for relevant statuses
+            if (in_array($status, ['outdated', 'missing_from_disk', 'missing_from_db'], true)) {
                 echo '<form method="post" style="display:inline;">';
                 wp_nonce_field('sync_pattern_' . $slug, 'sync_nonce');
                 echo '<input type="hidden" name="sync_slug" value="' . esc_attr($slug) . '">';
-                echo '<button type="submit" name="sync_pattern" class="button-primary">Sync</button>';
+                echo '<button type="submit" name="sync_pattern" class="button button-primary">Sync</button>';
                 echo '</form> ';
             }
 
+            // Show Delete button only for orphaned patterns
             if ($status === 'orphaned') {
                 echo '<form method="post" style="display:inline;">';
                 wp_nonce_field('delete_pattern_' . $slug, 'delete_nonce');
                 echo '<input type="hidden" name="delete_slug" value="' . esc_attr($slug) . '">';
                 echo '<input type="hidden" name="confirm_delete" value="1">';
-                echo '<button type="submit" name="delete_pattern" class="button-secondary">Delete</button>';
+                echo '<button type="submit" name="delete_pattern" class="button button-secondary">Delete</button>';
                 echo '</form>';
             }
 
@@ -205,6 +209,7 @@ class PatternSyncService
 
         echo '</tbody></table></div>';
     }
+
 
 
 
