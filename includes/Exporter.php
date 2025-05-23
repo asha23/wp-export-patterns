@@ -121,7 +121,7 @@ class Exporter
         echo '<hr><h2>Delete Patterns</h2>';
         if ($blocks) {
             echo '<table class="widefat striped">';
-            echo '<thead><tr><th>Title</th><th>Slug</th><th>Actions</th></tr></thead><tbody>';
+            echo '<thead><tr><th>Title</th><th>Slug</th><th>Actions</th><th></th></tr></thead><tbody>';
 
             foreach ($blocks as $block) {
                 $slug = esc_attr($block->post_name);
