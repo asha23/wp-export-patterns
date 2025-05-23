@@ -54,7 +54,13 @@ class Importer
             $post_name    = sanitize_title($pattern['post_name']);
             $post_content = wp_kses_post($pattern['post_content']);
         
-            $existing = get_page_by_path($post_name, OBJECT, 'wp_block');
+            $existing = get_posts([
+                'post_type'   => 'wp_block',
+                'name'        => $post_name,
+                'post_status' => 'publish',
+                'numberposts' => 1,
+            ]);
+            $existing = !empty($existing) ? $existing[0] : null;
         
             if ($existing && !$overwrite) {
                 $skipped++;
