@@ -21,6 +21,11 @@ class Importer
             update_option('_wp_export_notice', 'import_invalid_json');
             return;
         }
+        
+        // Allow single-object files
+        if (isset($patterns['post_title'], $patterns['post_name'], $patterns['post_content'])) {
+            $patterns = [$patterns];
+        }
 
         $imported = 0;
         $skipped = 0;
