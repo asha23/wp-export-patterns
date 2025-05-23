@@ -42,25 +42,21 @@ class PatternSyncAdmin
             wp_die('Access denied.');
         }
 
-        // SYNC
-        if (
-            isset($_POST['sync_slug'], $_POST['sync_nonce']) &&
-            wp_verify_nonce($_POST['sync_nonce'], 'sync_pattern_' . $_POST['sync_slug'])
-        ) {
-            $slug = sanitize_title($_POST['sync_slug']);
-            $source = PatternSyncService::load_from_disk();
+        // Sync
+        if (in_array($status, ['outdated', 'missing_from_disk', 'missing_from_db'], true)) {
+            echo '<form method="post" style="display:inline-block; margin-right:1rem;">';
+            echo '<input type="hidden" name="sync_slug" value="' . esc_attr($slug) . '">';
+            echo '<input type="hidden" name="sync_nonce" value="' . esc_attr(wp_create_nonce('sync_pattern_' . $slug)) . '">';
 
-            $result = isset($source[$slug])
-                ? PatternSyncService::import_pattern($slug)
-                : PatternSyncService::export_pattern($slug);
+            $buttonLabel = match ($status) {
+                'missing_from_db' => 'Import to DB',
+                'missing_from_disk' => 'Export to Disk',
+                'outdated' => 'Sync',
+                default => 'Sync',
+            };
 
-            if ($result === true) {
-                add_settings_error('pattern_sync', 'sync_success', "Pattern synced: $slug", 'updated');
-            } elseif (is_wp_error($result)) {
-                add_settings_error('pattern_sync', 'sync_error', "Sync failed: $slug - " . $result->get_error_message(), 'error');
-            } else {
-                add_settings_error('pattern_sync', 'sync_error', "Sync failed: $slug - unknown error", 'error');
-            }
+            echo '<input type="submit" class="button button-primary" value="' . esc_attr($buttonLabel) . '">';
+            echo '</form>';
         }
 
         // TRASH
