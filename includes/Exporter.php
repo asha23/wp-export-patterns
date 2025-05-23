@@ -25,8 +25,11 @@ class Exporter
         $patterns = PatternSyncService::detect_unsynced();
 
         // Filter only the truly out-of-sync ones
-        $outOfSync = array_filter($patterns, fn($p) => in_array($p['status'], ['missing_from_disk', 'outdated'], true));
+        $outOfSync = array_filter($patterns, fn($p) =>
+            in_array($p['status'], ['missing_from_disk', 'outdated', 'missing_from_db'], true)
+        );
 
+        error_log('[OUT OF SYNC] ' . print_r($outOfSync, true));
         if (empty($outOfSync)) {
             echo '<div class="notice notice-success is-dismissible"><p>Sweet! All patterns are in sync.</p></div>';
         } else {
@@ -34,7 +37,12 @@ class Exporter
             echo '<p><strong>' . count($outOfSync) . ' pattern' . (count($outOfSync) === 1 ? '' : 's') . ' out of sync:</strong></p>';
             echo '<ul style="margin-left:1em;">';
             foreach ($outOfSync as $slug => $info) {
-                $label = $info['status'] === 'missing_from_disk' ? 'Missing from disk' : 'Outdated';
+                $label = match ($info['status']) {
+                    'missing_from_disk' => 'Missing from disk',
+                    'outdated' => 'Outdated',
+                    'missing_from_db' => 'Missing from DB',
+                    default => ucfirst($info['status']),
+                };
                 echo '<li>' . esc_html($info['title']) . ' <em>(' . $label . ')</em></li>';
             }
             echo '</ul>';
